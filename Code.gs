@@ -574,7 +574,10 @@ function getPairingState() {
   const data = getCachedSheetData("Pairings");
   const sett = getFullSettings();
   const players = getPlayers();
-  if (players.length < 4) return { error: "Need at least 4 players." };
+  // Pairing only ever uses non-DNF players (see generateNextRound), so the bucket
+  // preview / sub padding must count active players, not the full roster.
+  const activePlayers = players.filter(p => !String(p.name).toUpperCase().startsWith("[DNF]"));
+  if (activePlayers.length < 4) return { error: "Need at least 4 players." };
 
   let maxRound = 0;
   if (data && data.length > 1) {
@@ -598,7 +601,7 @@ function getPairingState() {
   let shouldTrigger = (cutEnabled && cutSize > 0 && !isCutActive && cutRound > 0 && (maxRound + 1) > cutRound);
 
   let validOptions = [];
-  let pCount = players.length;
+  let pCount = activePlayers.length;
   // Pad total to be divisible by 4 (to account for potential SUBs)
   if (pCount % 4 !== 0) pCount += (4 - (pCount % 4));
 
@@ -637,7 +640,7 @@ function getPairingState() {
   }
 
   return {
-    nextRound: maxRound + 1, totalRounds: sett.roundCount, playerCount: players.length,
+    nextRound: maxRound + 1, totalRounds: sett.roundCount, playerCount: activePlayers.length,
     validBuckets: validOptions, lastBuckets: Number(readSetting(ss, "Last_Bucket_Count", 1))
   };
 }
