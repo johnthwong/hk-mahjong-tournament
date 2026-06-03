@@ -292,6 +292,13 @@ function startNewTournament(tournamentName, rulesetName) {
     updateSheetSetting(newSS, "Rotation Seed", 0);
     updateSheetSetting(newSS, "Round Count", 4);
     updateSheetSetting(newSS, "Tiebreaker_Rule", "split");
+    updateSheetSetting(newSS, "Faan_Min", 3);
+    updateSheetSetting(newSS, "Faan_Max", 13);
+    updateSheetSetting(newSS, "Faan_Min_Points", 8);
+    updateSheetSetting(newSS, "Faan_Scaling", "half");
+    updateSheetSetting(newSS, "Faan_Custom_Points", "");
+    updateSheetSetting(newSS, "Self_Pick_Multiplier", 1.5);
+    updateSheetSetting(newSS, "False_Win_Points", "");
     updateSheetSetting(newSS, "Pre_Tourney_Enabled", "false"); 
     updateSheetSetting(newSS, "Tourney_Begun", "false"); 
     updateSheetSetting(newSS, "Active_Ruleset", rulesetName); 
@@ -335,12 +342,63 @@ function getFullSettings() {
     topCutSize: read(dataSS, "Top_Cut_Size", 0),
     topCutRound: read(dataSS, "Top_Cut_Round", 0),
     tiebreakerRule: read(dataSS, "Tiebreaker_Rule", "split"),
+    faanMin: read(dataSS, "Faan_Min", 3),
+    faanMax: read(dataSS, "Faan_Max", 13),
+    faanMinPoints: read(dataSS, "Faan_Min_Points", 8),
+    faanScaling: read(dataSS, "Faan_Scaling", "half"),
+    faanCustomPoints: read(dataSS, "Faan_Custom_Points", ""),
+    selfPickMultiplier: read(dataSS, "Self_Pick_Multiplier", 1.5),
+    falseWinPoints: read(dataSS, "False_Win_Points", ""),
     preTourneyEnabled: read(dataSS, "Pre_Tourney_Enabled", "false"),
     tourneyBegun: read(dataSS, "Tourney_Begun", "false"),
     activeRuleset: read(dataSS, "Active_Ruleset", ""),
     theme: read(dataSS, "Theme", "default")
   };
   return _cachedSettings;
+}
+
+// Base (unscaled) points for a faan count.
+//   full-spicy: pure doubling, 2^faan.
+//   half-spicy: same as full up to 4 faan, then doubles every 2 faan, with odd
+//   faan = 1.5x the previous even faan (matches the standard HK faan-to-score table).
+function faanBase(f, scaling) {
+  if (scaling === 'full') return Math.pow(2, f);
+  if (f <= 4) return Math.pow(2, f);
+  if (f % 2 === 0) return Math.pow(2, f / 2 + 2);
+  return 1.5 * Math.pow(2, (f - 1) / 2 + 2);
+}
+
+// Build the faan -> points table, scaled so the minimum faan is worth the
+// configured point value. Self-pick points = points x self-pick multiplier
+// (the winner's total on a self-draw, split among the three opponents).
+function computeFaanTable(s) {
+  const minF = parseInt(s.faanMin);
+  const maxF = parseInt(s.faanMax);
+  const minPts = Number(s.faanMinPoints);
+  const scaling = String(s.faanScaling || 'half').toLowerCase();
+  const spMult = Number(s.selfPickMultiplier) || 1.5;
+  const rows = [];
+
+  if (scaling === 'custom') {
+    const custom = String(s.faanCustomPoints || '').split(/[\s,]+/).filter(x => x !== '').map(Number);
+    for (let f = minF, i = 0; f <= maxF; f++, i++) {
+      const pts = (i < custom.length && !isNaN(custom[i])) ? custom[i] : 0;
+      rows.push({ faan: f, points: pts, selfPick: Math.round(pts * spMult) });
+    }
+    return rows;
+  }
+
+  const baseMin = faanBase(minF, scaling) || 1;
+  for (let f = minF; f <= maxF; f++) {
+    const pts = Math.round(minPts * faanBase(f, scaling) / baseMin);
+    rows.push({ faan: f, points: pts, selfPick: Math.round(pts * spMult) });
+  }
+  return rows;
+}
+
+// Client-callable: the faan table for the active tournament.
+function getFaanTable() {
+  return computeFaanTable(getFullSettings());
 }
 
 function saveTournamentSettings(form) {
@@ -351,6 +409,13 @@ function saveTournamentSettings(form) {
   updateSheetSetting(ss, "Top_Cut_Size", form.topCutSize);
   updateSheetSetting(ss, "Top_Cut_Round", form.topCutRound);
   updateSheetSetting(ss, "Tiebreaker_Rule", form.tiebreakerRule);
+  updateSheetSetting(ss, "Faan_Min", form.faanMin);
+  updateSheetSetting(ss, "Faan_Max", form.faanMax);
+  updateSheetSetting(ss, "Faan_Min_Points", form.faanMinPoints);
+  updateSheetSetting(ss, "Faan_Scaling", form.faanScaling);
+  updateSheetSetting(ss, "Faan_Custom_Points", form.faanCustomPoints);
+  updateSheetSetting(ss, "Self_Pick_Multiplier", form.selfPickMultiplier);
+  updateSheetSetting(ss, "False_Win_Points", form.falseWinPoints);
   updateSheetSetting(ss, "Pre_Tourney_Enabled", form.preTourneyEnabled);
   updateSheetSetting(ss, "Theme", form.theme);
 

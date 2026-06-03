@@ -97,6 +97,30 @@
           <option value="split">Split (tied players share the placement)</option>
           <option value="head_bump">Seat order (prompt to rank tied players)</option>
       </select>
+
+      <div style="margin-top:15px; background:#e8f8f0; padding:10px; border-radius:8px; border:1px solid #b8ebd2;">
+          <h3 style="margin:0 0 10px 0; color:#16a085; font-size:1em;">Faan Scoring</h3>
+          <div style="display:flex; gap:10px;">
+              <div style="flex:1;"><label style="font-size:0.9em;">Min Faan</label><input type="number" id="setFaanMin" inputmode="numeric"></div>
+              <div style="flex:1;"><label style="font-size:0.9em;">Max Faan</label><input type="number" id="setFaanMax" inputmode="numeric"></div>
+          </div>
+          <label style="font-size:0.9em;">Points for Min Faan</label>
+          <input type="number" id="setFaanMinPoints" inputmode="numeric">
+          <label style="font-size:0.9em;">Scaling</label>
+          <select id="setFaanScaling" onchange="toggleFaanCustom()">
+              <option value="half">Half-spicy (doubles every 2 faan)</option>
+              <option value="full">Full-spicy (doubles every faan)</option>
+              <option value="custom">Custom (enter points below)</option>
+          </select>
+          <div id="faanCustomWrap" style="display:none;">
+              <label style="font-size:0.9em;">Custom points (one per faan, Min→Max, comma/space separated)</label>
+              <input type="text" id="setFaanCustom" placeholder="e.g. 8, 16, 24, 32, 48, ...">
+          </div>
+          <label style="font-size:0.9em;">Self-pick Multiplier</label>
+          <input type="number" step="0.1" id="setSelfPick" inputmode="decimal">
+          <label style="font-size:0.9em;">False Win Penalty (points; blank = max-faan points)</label>
+          <input type="number" id="setFalseWin" inputmode="numeric">
+      </div>
       <div style="margin-top:15px; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee;">
           <div style="display:flex; align-items:center; gap:10px;">
               <input type="checkbox" id="setPreTourneyEnabled" style="width:auto; margin:0;">
@@ -371,6 +395,12 @@
         }
     }
 
+    function toggleFaanCustom() {
+        const sel = document.getElementById('setFaanScaling');
+        const wrap = document.getElementById('faanCustomWrap');
+        if (sel && wrap) wrap.style.display = (sel.value === 'custom') ? 'block' : 'none';
+    }
+
     // --- RENDERERS ---
 function renderSettings() {
         const s = DATA.settings;
@@ -383,6 +413,14 @@ function renderSettings() {
         document.getElementById('setTopCutSize').value = s.topCutSize;
         document.getElementById('setTopCutRound').value = s.topCutRound;
         document.getElementById('setTiebreaker').value = DATA.settings.tiebreakerRule || 'split';
+        document.getElementById('setFaanMin').value = s.faanMin;
+        document.getElementById('setFaanMax').value = s.faanMax;
+        document.getElementById('setFaanMinPoints').value = s.faanMinPoints;
+        document.getElementById('setFaanScaling').value = s.faanScaling || 'half';
+        document.getElementById('setFaanCustom').value = s.faanCustomPoints || '';
+        document.getElementById('setSelfPick').value = s.selfPickMultiplier;
+        document.getElementById('setFalseWin').value = s.falseWinPoints;
+        toggleFaanCustom();
         // Updated to handle Google Sheets boolean conversion safely
         document.getElementById('setPreTourneyEnabled').checked = (String(s.preTourneyEnabled) === "true");
         toggleSetTopCut();
@@ -919,6 +957,13 @@ function actionSaveSettings() {
             topCutSize: document.getElementById('setTopCutSize').value,
             topCutRound: document.getElementById('setTopCutRound').value,
             tiebreakerRule: document.getElementById('setTiebreaker').value,
+            faanMin: document.getElementById('setFaanMin').value,
+            faanMax: document.getElementById('setFaanMax').value,
+            faanMinPoints: document.getElementById('setFaanMinPoints').value,
+            faanScaling: document.getElementById('setFaanScaling').value,
+            faanCustomPoints: document.getElementById('setFaanCustom').value,
+            selfPickMultiplier: document.getElementById('setSelfPick').value,
+            falseWinPoints: document.getElementById('setFalseWin').value,
             preTourneyEnabled: document.getElementById('setPreTourneyEnabled').checked.toString(),
             rulesetName: document.getElementById('newRuleset').value,
             theme: document.getElementById('setTheme').value 
