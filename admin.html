@@ -90,10 +90,7 @@
 
     <div class="card">
       <h2>Tournament Rules & Settings</h2>
-      
-      <label>Tournament Name</label>
-      <input type="text" id="newTitle" placeholder="e.g. Winter Cup 2026">
-      
+
       <label>Total Rounds</label> <input type="number" id="setRounds" inputmode="numeric">
 
       <label>Pairing Mode</label>
@@ -1151,15 +1148,16 @@ function actionBulk() {
         google.script.run.withSuccessHandler(res => { alert(res); refreshAndRender(); }).switchTournament(id);
     }
     function actionCreate() {
-        const n = document.getElementById('newTitle').value;
+        const n = prompt("Name for the new tournament:\n\nThis will also be the file name on Google Drive.", "");
+        if (n === null) return;               // cancelled
+        const name = n.trim();
+        if (!name) { alert("Please enter a tournament name."); return; }
         const ruleset = document.getElementById('newRuleset').value;
-        if(confirm("Create new file?")) { 
-            showBusy("Creating..."); 
-            google.script.run.withSuccessHandler(res => { 
-                alert(res); 
-                refreshAndRender(); 
-            }).startNewTournament(n, ruleset); 
-        }
+        showBusy("Creating...");
+        google.script.run.withSuccessHandler(res => {
+            alert(res);
+            refreshAndRender();
+        }).withFailureHandler(e => { hideBusy(); alert("Create failed: " + (e && e.message ? e.message : e)); }).startNewTournament(name, ruleset);
     }
 
     // --- RENDER HELPERS ---
