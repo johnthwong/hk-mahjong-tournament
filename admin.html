@@ -215,6 +215,7 @@
   </div>
 
   <div id="tab-pairings" class="tab-view">
+    <button class="btn btn-blue" id="btnRefreshPairings" style="width:100%; margin:0 0 15px 0;" onclick="refreshPairings()">↻ Refresh (pull latest player changes)</button>
     <div class="card" style="border-left: 5px solid #8e44ad;">
       <h2>Generate Pairings</h2>
       <div id="pairStatus" style="margin-bottom:15px; font-weight:normal; color:#555; line-height:1.5;">Checking status...</div>
@@ -363,9 +364,6 @@
           views.forEach(v => v.classList.remove('active'));
           btn.classList.add('active');
           document.getElementById(btn.dataset.tab).classList.add('active');
-          // Pairings reflect the current roster, so always pull fresh data when
-          // opening this tab (player edits made on other tabs show up immediately).
-          if (btn.dataset.tab === 'tab-pairings') refreshAndRender();
         });
       });
     }
@@ -742,6 +740,20 @@ function populateBucketDropdown() {
     function refreshAndRender() {
         showBusy("Refreshing Data...");
         google.script.run.withSuccessHandler(d => { DATA = d; renderAll(); hideBusy(); }).getInitialAdminData();
+    }
+
+    // Fast, pairing-only refresh (skips the heavy Drive scan / score log / penalties).
+    function refreshPairings() {
+        showBusy("Refreshing...");
+        google.script.run.withSuccessHandler(d => {
+            DATA.settings = d.settings;
+            DATA.players = d.players;
+            DATA.schedule = d.schedule;
+            DATA.pairingState = d.pairingState;
+            DATA.allGames = d.allGames;
+            renderAll();
+            hideBusy();
+        }).getPairingData();
     }
     
     function refreshScoringOnly() {

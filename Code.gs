@@ -86,8 +86,21 @@ function getInitialAdminData() {
     schedule: getScheduleTables(),
     pairingState: getPairingState(),
     penalties: getRecentPenalties(),
-    penaltyList: getPenaltyDefinitions(), 
+    penaltyList: getPenaltyDefinitions(),
     scoreLog: getScoreLog(),
+    allGames: getAllGamesData()
+  };
+}
+
+// Lightweight refresh for the Pairings tab: only the data that tab needs, so it
+// skips the slow Drive-folder scan (getTournamentList), score log, penalties, and
+// ruleset reads that getInitialAdminData does.
+function getPairingData() {
+  return {
+    settings: getFullSettings(),
+    players: getPlayers(),
+    schedule: getScheduleTables(),
+    pairingState: getPairingState(),
     allGames: getAllGamesData()
   };
 }
