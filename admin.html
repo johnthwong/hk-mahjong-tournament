@@ -105,13 +105,14 @@
               <input type="checkbox" id="setPreTourneyEnabled" style="width:auto; margin:0;">
               <label for="setPreTourneyEnabled" style="margin:0; font-weight:600;">Enable Pre-Tournament Pairings</label>
           </div>
-          <div style="font-size:0.8em; color:#7f8c8d; margin-top:5px;">Requires players to Check In before starting the tournament. Unchecked players are automatically dropped and Round 1 pairings are condensed.</div>
+          <div style="font-size:0.8em; color:#7f8c8d; margin-top:5px;">Holds the tournament in a check-in phase before it officially starts: you pair Round 1 in advance and only lock it in once you know who showed up. When you Begin, anyone not checked in is dropped and Round 1 is condensed to fill the empty seats. Leave off to start immediately with the full roster.</div>
       </div>
       <div style="margin-top:15px; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee;">
           <div style="display:flex; align-items:center; gap:10px;">
               <input type="checkbox" id="setTopCutEnabled" style="width:auto; margin:0;" onchange="toggleSetTopCut()">
               <label for="setTopCutEnabled" style="margin:0; font-weight:600;">Enable Top Cut</label>
           </div>
+          <div style="font-size:0.8em; color:#7f8c8d; margin-top:5px;">After a chosen round, the top players split off into a separate finals bracket and play only each other for the rest of the tournament; their final placing is decided by the points they earn from the cut onward. Set how many players advance and which round the cut happens after.</div>
           <div id="topCutFields" style="display:none; margin-top:10px;">
               <label style="font-size:0.9em;">Cut Size (Players)</label>
               <input type="number" id="setTopCutSize" placeholder="e.g. 4" inputmode="numeric" style="margin-bottom:10px;">
