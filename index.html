@@ -443,7 +443,7 @@ const buildRow = (p, isTopTable) => {
           let tr = `<tr class="${rowClass}">
                     <td class="sticky-col col-rank">${p.rank}</td>
                     <td class="sticky-col col-id">${cleanId}</td>
-                    <td class="sticky-col col-name">${p.name}</td>
+                    <td class="col-name">${p.name}</td>
                     <td class="total-cell">${scoreDisplay}</td>`;
           
           const schedP = globalSchedule.players.find(sp => sp.id === p.id);
@@ -464,7 +464,7 @@ const buildRow = (p, isTopTable) => {
           let h = `<thead><tr>
             <th class="sticky-col col-rank">Rank</th>
             <th class="sticky-col col-id">ID</th>
-            <th class="sticky-col col-name">Name</th>
+            <th class="col-name">Name</th>
             <th style="min-width:70px;">Total</th>`;
           for(let i=maxR; i>=1; i--) h += `<th style="white-space:nowrap;">Round ${i}</th>`;
           h += `<th style="min-width:40px;">Penalties</th>`;
@@ -493,7 +493,7 @@ function renderSchedulePlayerView() {
       const container = document.getElementById('scheduleMatrix');
       if(!globalSchedule.players || !globalSchedule.players.length) { container.innerHTML = "<div class='card-pad'>No pairings.</div>"; return; }
       
-      let html = "<table><thead><tr><th class='sticky-col sch-id'>ID</th><th class='sticky-col sch-name'>Name</th>";
+      let html = "<table><thead><tr><th class='sticky-col sch-id'>ID</th><th class='sch-name'>Name</th>";
       for(let i=globalSchedule.maxRound; i>=1; i--) html += `<th style="white-space:nowrap;">Round ${i}</th>`;
       html += "</tr></thead><tbody>";
       
@@ -501,7 +501,7 @@ function renderSchedulePlayerView() {
         let cleanId = p.id.replace(/^P/i, '');
         html += `<tr class="searchable-row">
             <td class="sticky-col sch-id">${cleanId}</td>
-            <td class="sticky-col sch-name">${p.name}</td>`;
+            <td class="sch-name">${p.name}</td>`;
         for(let i=globalSchedule.maxRound; i>=1; i--) {
           html += `<td>${p.tables[i] ? `<span class="t-badge">${p.tables[i]}</span>` : '-'}</td>`;
         }
