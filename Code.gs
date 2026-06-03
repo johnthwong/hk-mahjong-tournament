@@ -409,8 +409,12 @@ function saveTournamentSettings(form) {
   updateSheetSetting(ss, "Top_Cut_Size", form.topCutSize);
   updateSheetSetting(ss, "Top_Cut_Round", form.topCutRound);
   updateSheetSetting(ss, "Tiebreaker_Rule", form.tiebreakerRule);
-  updateSheetSetting(ss, "Faan_Min", form.faanMin);
-  updateSheetSetting(ss, "Faan_Max", form.faanMax);
+  // Clamp faan range: max caps at 13 (HK), min >= 1 and strictly below max.
+  let fMax = Math.min(13, Math.max(2, parseInt(form.faanMax) || 13));
+  let fMin = Math.max(1, parseInt(form.faanMin) || 3);
+  if (fMin >= fMax) fMin = fMax - 1;
+  updateSheetSetting(ss, "Faan_Min", fMin);
+  updateSheetSetting(ss, "Faan_Max", fMax);
   updateSheetSetting(ss, "Faan_Min_Points", form.faanMinPoints);
   updateSheetSetting(ss, "Faan_Scaling", form.faanScaling);
   updateSheetSetting(ss, "Faan_Custom_Points", form.faanCustomPoints);

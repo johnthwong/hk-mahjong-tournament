@@ -101,8 +101,8 @@
       <div style="margin-top:15px; background:#e8f8f0; padding:10px; border-radius:8px; border:1px solid #b8ebd2;">
           <h3 style="margin:0 0 10px 0; color:#16a085; font-size:1em;">Faan Scoring</h3>
           <div style="display:flex; gap:10px;">
-              <div style="flex:1;"><label style="font-size:0.9em;">Min Faan</label><input type="number" id="setFaanMin" inputmode="numeric"></div>
-              <div style="flex:1;"><label style="font-size:0.9em;">Max Faan</label><input type="number" id="setFaanMax" inputmode="numeric"></div>
+              <div style="flex:1;"><label style="font-size:0.9em;">Min Faan</label><input type="number" id="setFaanMin" min="1" max="12" inputmode="numeric"></div>
+              <div style="flex:1;"><label style="font-size:0.9em;">Max Faan (≤13)</label><input type="number" id="setFaanMax" min="2" max="13" inputmode="numeric"></div>
           </div>
           <label style="font-size:0.9em;">Points for Min Faan</label>
           <input type="number" id="setFaanMinPoints" inputmode="numeric">
@@ -952,8 +952,14 @@ function updateDistributionDisplay() {
         }
     }
 function actionSaveSettings() {
+        const fMin = parseInt(document.getElementById('setFaanMin').value, 10);
+        const fMax = parseInt(document.getElementById('setFaanMax').value, 10);
+        if (isNaN(fMax) || fMax < 2 || fMax > 13) return alert("Max Faan must be between 2 and 13 (Hong Kong mahjong caps at 13 faan).");
+        if (isNaN(fMin) || fMin < 1) return alert("Min Faan must be at least 1.");
+        if (fMin >= fMax) return alert("Min Faan must be less than Max Faan.");
+
         showBusy("Saving...");
-        const d = { 
+        const d = {
             roundCount: document.getElementById('setRounds').value,
             pairingMode: document.getElementById('setPairMode').value,
             topCutEnabled: document.getElementById('setTopCutEnabled').checked.toString(),
