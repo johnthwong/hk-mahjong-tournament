@@ -316,6 +316,8 @@
         <input type="hidden" id="penCalculatedPoints" value="0">
 
         <button class="btn btn-red" id="btnSubmitPenalty" onclick="actionSubmitPenalty()">Apply Deduction</button>
+        <button class="btn btn-orange" id="btnFalseWin" onclick="actionFalseWin()" style="margin-top:8px;">Apply False Win (table-wide)</button>
+        <div style="font-size:0.8em; color:#7f8c8d; margin-top:6px;">False Win uses the selected Round, Table and Player: that player loses 3× the False Win value and each of the other three players gains it.</div>
     </div>
 <div class="card">
         <h2>History</h2>
@@ -994,6 +996,20 @@ function actionSaveSettings() {
     }
 
     // --- PENALTY ACTIONS ---
+    function actionFalseWin() {
+        const round = document.getElementById('penRound').value;
+        const table = document.getElementById('penTable').value;
+        const pid = document.getElementById('penPlayer').value;
+        if (!round || !table || table === '-' || !pid) return alert("Select Round, Table, and the offending Player first.");
+        if (!confirm("Apply a False Win to this player?\n\nThey lose 3× the False Win value; the other three players each gain it.")) return;
+        showBusy("Applying False Win...");
+        google.script.run.withSuccessHandler(res => {
+            hideBusy();
+            alert(res.message);
+            if (res.success) refreshAndRender();
+        }).applyFalseWin(round, table, pid);
+    }
+
     function actionSubmitPenalty() {
         const round = document.getElementById('penRound').value;
         const table = document.getElementById('penTable').value;

@@ -1183,6 +1183,49 @@ function addPenalty(round, table, playerId, points, reason, notes) {
     lock.releaseLock();
   }
 }
+
+// False Win: the offender loses 3*V and each of the other three players at the
+// table gains V (zero-sum). V defaults to the points at the maximum faan. Stored
+// as penalty rows (positive "Points Deducted" reduces score; negative credits it).
+function applyFalseWin(round, table, offenderId) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch (e) { return { success: false, message: "Server busy. Please try again." }; }
+  try {
+    const ss = getDataSS();
+    const s = getFullSettings();
+
+    let V = Number(s.falseWinPoints);
+    if (!V || isNaN(V) || V <= 0) {
+      const tbl = computeFaanTable(s);
+      V = tbl.length ? tbl[tbl.length - 1].points : 0;
+    }
+    if (!V) return { success: false, message: "False Win value is 0 — set it in Settings (or configure the Faan table) first." };
+
+    const games = getAllGamesData()[round] || [];
+    const game = games.find(x => String(x.id) === String(table));
+    if (!game) return { success: false, message: `Table ${table} not found in Round ${round}.` };
+    const seated = ['p1', 'p2', 'p3', 'p4'].map(k => String(game[k].id)).filter(id => id && id !== "?");
+    if (seated.indexOf(String(offenderId)) === -1) return { success: false, message: "That player is not seated at the selected table." };
+
+    let pSheet = ss.getSheetByName("Penalties");
+    if (!pSheet) { pSheet = ss.insertSheet("Penalties"); pSheet.appendRow(["Timestamp", "Player ID", "Points Deducted", "Reason", "Round", "Table", "Notes"]); }
+
+    const now = new Date();
+    const others = seated.filter(id => id !== String(offenderId) && id !== "BYE");
+    const rows = [[now, offenderId, 3 * V, "False Win", round, table, `Pays ${V} to each of ${others.length} opponents`]];
+    others.forEach(id => rows.push([now, id, -V, "False Win (credit)", round, table, `Credit from ${offenderId}'s false win`]));
+    pSheet.getRange(pSheet.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+
+    clearCache();
+    updateLeaderboardSheet();
+    return { success: true, message: `False Win applied: ${offenderId} −${3 * V}; each of ${others.length} opponents +${V}.` };
+  } catch (e) {
+    return { success: false, message: "Error applying False Win: " + e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getRecentPenalties() {
   const data = getCachedSheetData("Penalties");
   if (!data || data.length <= 1) return [];
