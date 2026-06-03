@@ -100,29 +100,49 @@ Columns: `Player ID`, `Name`, `Checked In`, `ARA ID`.
 
 ### Substitutes (SUB players)
 
-When the active player count isn't a multiple of 4, the app can auto-add filler
-players to complete the last table.
+Subs are a **filler pool**, not permanent participants. The number actually matched
+each round is `subsNeeded = (4 - realActive % 4) % 4` — just enough to round the
+**real (non-sub) active players** up to a multiple of 4. `isSubPlayer(p)` (a player
+whose ID or name starts with `SUB`) is the single detection helper.
 
+- **`generateNextRound`** splits active (non-`[DNF]`) players into reals and subs,
+  computes `subsNeeded`, then matches `reals.concat(subs.slice(0, subsNeeded))`.
+  **Excess subs are benched (sliced off), not matched.** So if real players drop to a
+  multiple of 4 (e.g. 12), all subs are benched automatically. If subs are *short*
+  and the caller passed `addSubs=true`, it creates the missing ones.
 - Auto-added subs get **ID `SUB<n>` and name `SUBSTITUTE <n>`** (e.g. `SUB1` /
   `SUBSTITUTE 1`), created in both `generateNextRound` and the round-1 repair flow.
   Numbering is taken from the max existing `SUB<n>` ID so removing a sub can't cause
-  an ID collision.
-- **SUB detection must use the ID prefix or the name prefix consistently.** Name
-  checks use `name.toUpperCase().startsWith("SUB")` (matches `SUBSTITUTE`); ID checks
-  use `id.startsWith("SUB")`. Earlier auto-subs were created with `P<n>` IDs and
-  `SUB <n>` names, so the ID-based skip in `countRepeats` (lines ~909/915) silently
-  never matched — fixed by giving subs `SUB<n>` IDs.
-- **The "add subs?" prompt fires on every round**, not just round 1
-  (`admin.html`): if the active (non-`[DNF]`) count isn't divisible by 4 it offers to
-  add the needed subs. The server (`generateNextRound`, `addSubs` arg) only pads when
-  the client passes `addSubs = true`.
-- **Known limitation (not yet changed): subs are still full participants in scoring,
-  standings, and Swiss seeding.** `getStandingsData` and the Swiss `ranked` sort
-  include every non-`[DNF]` player with no SUB check, so a sub accrues points, earns
-  a rank, and can be seeded into a top bucket — displacing a real contestant. Making
-  subs neutral fillers would require filtering them out of standings ranking and the
-  seeding sort. The `countRepeats` fix above only stops them being counted as repeat
-  opponents.
+  an ID collision. (Subs added via the normal Add Player / Bulk Import UI get `P<n>`
+  IDs and aren't recognized as subs.)
+- **`getPairingState`** sizes the bucket preview as `ceil(realActive / 4) * 4` —
+  excluding `[DNF]` players and not inflating for excess subs — so the preview matches
+  what will actually be paired.
+- **The add-subs prompt (`admin.html`) fires only when short on subs**, on any round:
+  it compares `subsNeeded` to existing subs and asks to add the difference. When there
+  are enough or too many subs, it just confirms generation and the server benches the
+  extras.
+- **Regenerating a round** (see below) is how you re-apply this to an *already
+  generated* round — e.g. drop now-unneeded subs after a mid-round DNF.
+- **Known limitation (not changed): matched subs are still full participants in
+  scoring, standings, and Swiss seeding.** `getStandingsData` and the Swiss `ranked`
+  sort include every matched player with no SUB check, so a matched sub accrues points,
+  earns a rank, and can be seeded into a top bucket. The filler-pool logic only
+  controls *how many* subs are matched, not whether a matched sub affects standings.
+
+### Regenerating the latest round
+
+`deleteRoundAndScores(roundNum)` (`Code.gs`) clears a round's `Pairings` rows **and
+its `Scores` rows**, then the client re-runs generation for that round. Exposed two
+ways in `admin.html`:
+
+- **Conflict modal "Redo Pairings"** (`redoPairings`) — when generation hits
+  unavoidable repeat matchups.
+- **"Regenerate Latest Round" card** (`actionRegenerateLatest`, after the swap card)
+  — deletes the latest round (`nextRound - 1`) and re-pairs current active players.
+  Deleting a round doesn't touch the roster, so the sub decision is recomputed from
+  `DATA.players`; it then reuses the redo path (`actionGenerateRound(true)`). **Scores
+  for that round are cleared** — the confirm dialog says so.
 
 ## Swiss pairing — how ties at a bracket boundary resolve
 
