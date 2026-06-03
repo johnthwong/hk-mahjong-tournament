@@ -291,9 +291,6 @@ function startNewTournament(tournamentName, rulesetName) {
     updateSheetSetting(newSS, "Tournament Name", cleanName);
     updateSheetSetting(newSS, "Rotation Seed", 0);
     updateSheetSetting(newSS, "Round Count", 4);
-    updateSheetSetting(newSS, "Starting Points", 30000);
-    updateSheetSetting(newSS, "Uma 1st", 15);
-    updateSheetSetting(newSS, "Uma 2nd", 5);
     updateSheetSetting(newSS, "Tiebreaker_Rule", "split");
     updateSheetSetting(newSS, "Pre_Tourney_Enabled", "false"); 
     updateSheetSetting(newSS, "Tourney_Begun", "false"); 
@@ -332,9 +329,6 @@ function getFullSettings() {
   _cachedSettings = {
     activeName: read(master, "Active_Tournament_Name", "No Active Tournament"),
     activeId: read(master, "Active_Tournament_ID", ""),
-    uma1: read(dataSS, "Uma 1st", 15),
-    uma2: read(dataSS, "Uma 2nd", 5),
-    startPoints: read(dataSS, "Starting Points", 30000),
     roundCount: read(dataSS, "Round Count", 4),
     pairingMode: read(dataSS, "Pairing_Mode", "scramble"),
     topCutEnabled: read(dataSS, "Top_Cut_Enabled", "false"),
@@ -351,9 +345,6 @@ function getFullSettings() {
 
 function saveTournamentSettings(form) {
   const ss = getDataSS();
-  updateSheetSetting(ss, "Uma 1st", form.uma1);
-  updateSheetSetting(ss, "Uma 2nd", form.uma2);
-  updateSheetSetting(ss, "Starting Points", form.startPoints);
   updateSheetSetting(ss, "Round Count", form.roundCount);
   updateSheetSetting(ss, "Pairing_Mode", form.pairingMode);
   updateSheetSetting(ss, "Top_Cut_Enabled", form.topCutEnabled);
@@ -1072,45 +1063,19 @@ function saveScores(form) {
     const ss = getDataSS();
     let sheet = ss.getSheetByName("Scores");
     if (!sheet) sheet = ss.insertSheet("Scores");
-    const settings = getFullSettings();
-    const start = Number(settings.startPoints);
-    let u1 = Number(settings.uma1);
-    let u2 = Number(settings.uma2);
-
-    if (Math.abs(u1) < 1000 && u1 !== 0) u1 *= 1000;
-    if (Math.abs(u2) < 1000 && u2 !== 0) u2 *= 1000;
-
-    const tieRule = settings.tiebreakerRule || 'split';
+    // HK net-points model: each player's entered score IS their net result for
+    // the game (zero-sum across the table). No Uma, no starting stack, no
+    // thousands scaling. The last Scores column (legacy "Leftover") stays 0.
     const g = form.game;
-    let pData = [ { id: g.p1Id, s: Number(g.p1Score), k: 'p1' }, { id: g.p2Id, s: Number(g.p2Score), k: 'p2' }, { id: g.p3Id, s: Number(g.p3Score), k: 'p3' }, { id: g.p4Id, s: Number(g.p4Score), k: 'p4' } ];
-    const bonuses = [u1, u2, -u2, -u1];
-    let res = {};
-
-    if (tieRule === 'head_bump' && form.rankedIds) {
-        pData.sort((a, b) => {
-           if (b.s !== a.s) return b.s - a.s; 
-           return form.rankedIds.indexOf(a.id) - form.rankedIds.indexOf(b.id);
-        });
-        pData.forEach((p, idx) => { res[p.k] = { raw: p.s, final: ((p.s - start) + bonuses[idx]) / 1000 }; });
-    } else {
-        pData.sort((a, b) => b.s - a.s);
-        let scoreGroups = new Map();
-        pData.forEach((p, i) => {
-            if (!scoreGroups.has(p.s)) scoreGroups.set(p.s, { players: [], totalBonus: 0 });
-            let group = scoreGroups.get(p.s);
-            group.players.push(p);
-            group.totalBonus += bonuses[i];
-        });
-        scoreGroups.forEach((group, score) => {
-            let avgBonus = group.totalBonus / group.players.length;
-            group.players.forEach(p => {
-                res[p.k] = { raw: p.s, final: ((p.s - start) + avgBonus) / 1000 };
-            });
-        });
-    }
+    const res = {
+      p1: { raw: Number(g.p1Score), final: Number(g.p1Score) },
+      p2: { raw: Number(g.p2Score), final: Number(g.p2Score) },
+      p3: { raw: Number(g.p3Score), final: Number(g.p3Score) },
+      p4: { raw: Number(g.p4Score), final: Number(g.p4Score) }
+    };
 
     const check = checkIfScored(form.round, g.gameId);
-    const rowData = [ new Date(), form.round, g.gameId, g.p1Id, res.p1.raw, res.p1.final, g.p2Id, res.p2.raw, res.p2.final, g.p3Id, res.p3.raw, res.p3.final, g.p4Id, res.p4.raw, res.p4.final, g.leftoverScore ];
+    const rowData = [ new Date(), form.round, g.gameId, g.p1Id, res.p1.raw, res.p1.final, g.p2Id, res.p2.raw, res.p2.final, g.p3Id, res.p3.raw, res.p3.final, g.p4Id, res.p4.raw, res.p4.final, 0 ];
     if (check.scored && check.rowIndex) { sheet.getRange(check.rowIndex, 1, 1, rowData.length).setValues([rowData]); }
     else { sheet.appendRow(rowData); }
     
@@ -1140,8 +1105,7 @@ function addPenalty(round, table, playerId, points, reason, notes) {
     if (!sheet) { sheet = ss.insertSheet("Penalties"); sheet.appendRow(["Timestamp", "Player ID", "Points Deducted", "Reason", "Round", "Table", "Notes"]); }
     
     let pts = Number(points);
-    if (isNaN(pts)) pts = 0; 
-    if (Math.abs(pts) < 1000 && pts !== 0) pts *= 1000;
+    if (isNaN(pts)) pts = 0;
     sheet.appendRow([new Date(), playerId, pts, reason, round, table, notes]);
     
    
@@ -1243,7 +1207,7 @@ function getStandingsData() {
       if (!pData[i][1]) continue;
       let rNum = parseInt(pData[i][4]);
       const pid = pData[i][1]; 
-      const deductFmt = Number(pData[i][2]) / 1000;
+      const deductFmt = Number(pData[i][2]);
       if(pid && stats[pid]) { 
           stats[pid].totalPts -= deductFmt; 
           stats[pid].pen += deductFmt;

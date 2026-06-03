@@ -84,9 +84,6 @@
       <label>Tournament Name</label>
       <input type="text" id="newTitle" placeholder="e.g. Winter Cup 2026">
       
-      <label>Uma (1st Place)</label> <input type="number" id="setUma1" inputmode="numeric">
-      <label>Uma (2nd Place)</label> <input type="number" id="setUma2" inputmode="numeric">
-      <label>Starting Points</label> <input type="number" id="setStart" inputmode="numeric">
       <label>Total Rounds</label> <input type="number" id="setRounds" inputmode="numeric">
 
       <label>Pairing Mode</label>
@@ -97,8 +94,8 @@
       
       <label>Tiebreaker Rule</label>
       <select id="setTiebreaker">
-          <option value="split">Split Uma (Average the placement bonuses)</option>
-          <option value="head_bump">Head Bump (Prompt for seat order)</option>
+          <option value="split">Split (tied players share the placement)</option>
+          <option value="head_bump">Seat order (prompt to rank tied players)</option>
       </select>
       <div style="margin-top:15px; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee;">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -249,11 +246,6 @@
         <h2 id="gameTitle">Table X</h2>
         <div id="editWarning" style="display:none;" class="edit-warning">⚠️ Table Already Scored - Editing Mode</div>
         <div id="scoreRows"></div>
-        <div class="score-row leftover-row">
-          <span class="player-label">Leftover / Riichi Sticks</span>
-          <input type="number" id="valLeftover" class="score-val" value="" placeholder="0" inputmode="numeric" pattern="\d*" oninput="checkSum()">
-          <button type="button" class="btn-icon-orange" onclick="toggleMinus('valLeftover')" style="margin-left: 5px; padding: 10px;">[+/-]</button>
-        </div>
         <div id="chkSumDisplay" class="calc-box">Start entering scores...</div>
         <button class="btn btn-green" id="btnSubmitScore" onclick="actionSubmitScore()" style="margin-top:20px;">Submit Score</button>
       </div>
@@ -383,9 +375,6 @@
 function renderSettings() {
         const s = DATA.settings;
         document.getElementById('activeTournamentLabel').textContent = "Active: " + s.activeName;
-        document.getElementById('setUma1').value = s.uma1;
-        document.getElementById('setUma2').value = s.uma2;
-        document.getElementById('setStart').value = s.startPoints;
         document.getElementById('setRounds').value = s.roundCount;
         
         document.getElementById('setPairMode').value = s.pairingMode || 'scramble';
@@ -670,11 +659,9 @@ function populateBucketDropdown() {
     }
 
     async function actionSubmitScore() {
-        const start = parseFloat(DATA.settings.startPoints);
-        const target = start * 4;
         const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-        const total = getVal('val_p1') + getVal('val_p2') + getVal('val_p3') + getVal('val_p4') + getVal('valLeftover');
-        if(total !== target) return alert(`Total mismatch! Required: ${target}, Current: ${total}`);
+        const total = getVal('val_p1') + getVal('val_p2') + getVal('val_p3') + getVal('val_p4');
+        if(total !== 0) return alert(`Scores must net to zero across the table. Current total: ${total}.`);
 
         const r = document.getElementById('selRound').value;
         const gid = document.getElementById('selGame').value;
@@ -716,9 +703,8 @@ function populateBucketDropdown() {
                 p1Id: document.getElementById('pid_p1').value, p1Score: getVal('val_p1'), 
                 p2Id: document.getElementById('pid_p2').value, p2Score: getVal('val_p2'), 
                 p3Id: document.getElementById('pid_p3').value, p3Score: getVal('val_p3'), 
-                p4Id: document.getElementById('pid_p4').value, p4Score: getVal('val_p4'), 
-                leftoverScore: getVal('valLeftover') 
-            } 
+                p4Id: document.getElementById('pid_p4').value, p4Score: getVal('val_p4')
+            }
         };
         google.script.run.withSuccessHandler(res => {
             alert(res.message);
@@ -927,9 +913,6 @@ function updateDistributionDisplay() {
 function actionSaveSettings() {
         showBusy("Saving...");
         const d = { 
-            uma1: document.getElementById('setUma1').value, 
-            uma2: document.getElementById('setUma2').value, 
-            startPoints: document.getElementById('setStart').value, 
             roundCount: document.getElementById('setRounds').value,
             pairingMode: document.getElementById('setPairMode').value,
             topCutEnabled: document.getElementById('setTopCutEnabled').checked.toString(),
@@ -1133,7 +1116,6 @@ function actionBulk() {
             }).join('');
             
             document.getElementById('scoreRows').innerHTML = html;
-            document.getElementById('valLeftover').value = isScored ? scores.leftover : "";
             checkSum();
             hideBusy();
         }).checkIfScored(r, gid, game.p1.id, game.p2.id, game.p3.id, game.p4.id);
@@ -1148,15 +1130,14 @@ function actionBulk() {
     }
 
     function checkSum() {
-        const start = parseFloat(DATA.settings.startPoints) || 30000;
-        const target = start * 4;
+        const raw = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
         const getVal = (id) => { const el = document.getElementById(id); return el && el.value ? parseFloat(el.value) : 0; };
-        const sum = getVal('val_p1') + getVal('val_p2') + getVal('val_p3') + getVal('val_p4') + getVal('valLeftover');
-        const diff = target - sum;
+        const anyEntered = ['val_p1','val_p2','val_p3','val_p4'].some(id => raw(id) !== "");
+        const sum = getVal('val_p1') + getVal('val_p2') + getVal('val_p3') + getVal('val_p4');
         const box = document.getElementById('chkSumDisplay');
-        if (sum === 0 && getVal('valLeftover') === 0) { box.className = "calc-box"; box.innerText = "Start entering scores..."; } 
-        else if (diff === 0) { box.className = "calc-box calc-good"; box.innerText = "✅ Check Sum: OK"; } 
-        else { box.className = "calc-box calc-bad"; box.innerText = `⚠️ ${diff>0?"Missing":"Over"} ${Math.abs(diff)}`; }
+        if (!anyEntered) { box.className = "calc-box"; box.innerText = "Start entering scores..."; }
+        else if (sum === 0) { box.className = "calc-box calc-good"; box.innerText = "✅ Check Sum: OK (nets to 0)"; }
+        else { box.className = "calc-box calc-bad"; box.innerText = `⚠️ Off by ${sum>0?"+":""}${sum} (must net to 0)`; }
     }
     
     function renderScoreLog() {
@@ -1166,7 +1147,7 @@ function actionBulk() {
             return;
         }
         body.innerHTML = DATA.scoreLog.map(r => 
-            `<tr><td style="font-size:0.85em; color:#7f8c8d;">${r.date}</td><td style="font-weight:bold; text-align:center;">${r.round}-${r.game}</td><td style="font-size:0.9em;">${r.p1}<br>${r.p2}<br>${r.p3}<br>${r.p4}<div style="font-size:0.8em; color:#999; margin-top:4px;">Sticks: ${r.leftover}</div></td></tr>`
+            `<tr><td style="font-size:0.85em; color:#7f8c8d;">${r.date}</td><td style="font-weight:bold; text-align:center;">${r.round}-${r.game}</td><td style="font-size:0.9em;">${r.p1}<br>${r.p2}<br>${r.p3}<br>${r.p4}</td></tr>`
         ).join('');
     }
     
