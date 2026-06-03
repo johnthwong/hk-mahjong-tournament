@@ -104,12 +104,25 @@
 
     .cherry-blossom {
       /* Only modify the core backgrounds and headers */
-      --bg-color: #FFEBF0; 
-      --header-bg-color: #ffacc7; 
-      --header-text-color: #5a1a3a; 
-      --header-subtext-color: #5a1a3a; 
-      
+      --bg-color: #FFEBF0;
+      --header-bg-color: #ffacc7;
+      --header-text-color: #5a1a3a;
+      --header-subtext-color: #5a1a3a;
+
       /* All other elements will automatically inherit the standard default colors from :root */
+    }
+
+    .jade {
+      /* base #1ccc81, complementary #cc1c68, analogous #1cc0cc, triadic #1c68cc */
+      --bg-color: #e8faf2;
+      --header-bg-color: #1ccc81;
+      --header-text-color: #053d28;
+      --header-subtext-color: #0a5e3f;
+      --score-pos-color: #12a86a;
+      --score-neg-color: #cc1c68;
+      --badge-bg: #e4f7f9;
+      --badge-text: #1c68cc;
+      --btn-green: #1ccc81;
     }
 
     body { background: var(--bg-color); color: var(--text-color); }
@@ -256,11 +269,7 @@
                 document.getElementById('tourneyLabel').innerText = settings.activeName;
                 document.title = settings.activeName;
             }
-            if(settings.theme === 'cherry_blossom') {
-                document.body.className = 'cherry-blossom';
-            } else {
-                document.body.className = '';
-            }
+            document.body.className = { cherry_blossom: 'cherry-blossom', jade: 'jade' }[settings.theme] || '';
         }
 
         globalSchedule = sched;
