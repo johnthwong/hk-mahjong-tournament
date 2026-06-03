@@ -167,7 +167,10 @@
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
           <h2 style="margin:0;">Roster <span id="rosterCount" style="font-size:0.8em; color:#888;"></span></h2>
-          <button id="btnFilterCheckIn" class="btn btn-blue" style="width:auto; margin:0; padding:8px 15px; font-size:0.9em;" onclick="cycleCheckInFilter()">Filter: All</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-green" style="width:auto; margin:0; padding:8px 15px; font-size:0.9em;" onclick="actionCheckInAll()">Check In All</button>
+            <button id="btnFilterCheckIn" class="btn btn-blue" style="width:auto; margin:0; padding:8px 15px; font-size:0.9em;" onclick="cycleCheckInFilter()">Filter: All</button>
+          </div>
       </div>
       <input type="text" id="searchRoster" placeholder="Search by name, ID, or ARA ID..." onkeyup="filterRoster()" style="margin-bottom: 15px;">
       
@@ -517,6 +520,12 @@ function filterRoster() {
     function actionToggleCheckIn(id) {
         showBusy("Updating...");
         google.script.run.withSuccessHandler(d => { DATA.players = d; renderRoster(); hideBusy(); }).togglePlayerCheckIn(id);
+    }
+
+    function actionCheckInAll() {
+        if(!confirm("Check in all players? (Substitutes are excluded.)")) return;
+        showBusy("Checking in all...");
+        google.script.run.withSuccessHandler(d => { DATA.players = d; renderRoster(); hideBusy(); }).checkInAllPlayers();
     }
 
     function renderPairings() {

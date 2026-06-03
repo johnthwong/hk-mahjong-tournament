@@ -1474,6 +1474,27 @@ function getPlayerScheduleMatrix() {
   });
   return { maxRound: maxRound, players: list };
 }
+// Check in every player at once, skipping substitutes (and withdrawn [DNF]
+// players). Existing check-in state for skipped players is left untouched.
+function checkInAllPlayers() {
+  const ss = getDataSS();
+  const sheet = ss.getSheetByName("Players");
+  if (!sheet) return getPlayers();
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return getPlayers();
+  if (data[0][2] !== "Checked In") sheet.getRange(1, 3).setValue("Checked In");
+
+  const colValues = [];
+  for (let i = 1; i < data.length; i++) {
+    const p = { id: data[i][0], name: data[i][1] };
+    const skip = isSubPlayer(p) || String(p.name).toUpperCase().startsWith("[DNF]");
+    colValues.push([skip ? data[i][2] : true]);
+  }
+  sheet.getRange(2, 3, colValues.length, 1).setValues(colValues);
+  clearCache();
+  return getPlayers();
+}
+
 function togglePlayerCheckIn(playerId) {
     const ss = getDataSS();
     const sheet = ss.getSheetByName("Players");
