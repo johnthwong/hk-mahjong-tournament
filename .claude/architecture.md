@@ -236,10 +236,11 @@ Per-tournament settings (`getFullSettings` / `saveTournamentSettings`):
 
 `computeFaanTable(s)` builds rows `{faan, points, selfPick}`. **The progression is
 anchored at the minimum faan** (worth `Faan_Min_Points`) and grows from there:
-- **half-spicy** (default): every 2 faan doubles; the in-between faan is 1.5x the
-  previous. Because it's anchored at the min, if the min faan is odd then even faan
-  are 1.5x the previous odd faan, and vice versa — the doubling phase always starts
-  at the min faan (so any base yields clean integers).
+- **half-spicy** (default): faan ≤ 4 pure-double every faan (canonical low region
+  1,2,4,8,16); from faan 5 up it doubles every 2 faan with the in-between faan at
+  1.5x the previous. The doubling phase anchors at `max(minFaan, 4)`, so if the base
+  lands on an odd faan its even neighbours are 1.5x (and vice versa) — clean integers
+  from any base, and `min=3` reproduces the canonical table (3:8, 4:16, 5:24, …).
 - **full-spicy**: every faan doubles (`minPts * 2^offset`).
 - **custom**: literal points list (comma/space separated, Min→Max).
 - `selfPick` = `points x Self_Pick_Multiplier` (winner's total on a self-draw,

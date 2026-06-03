@@ -467,7 +467,7 @@
         if (sel && wrap) wrap.style.display = (sel.value === 'custom') ? 'block' : 'none';
     }
 
-    // Mirror of the server's faanBase()/computeFaanTable() for a live preview.
+    // Mirror of the server's computeFaanTable() for a live preview.
     function renderFaanPreview() {
         const wrap = document.getElementById('faanPreview');
         if (!wrap) return;
@@ -490,15 +490,18 @@
                 rows.push({ faan: f, points: pts, selfPick: Math.round(pts * spMult) });
             }
         } else {
-            // Mirror of computeFaanTable: doubling anchored at the min faan.
+            // Mirror of computeFaanTable: faan <=4 pure-doubles; faan >=5 doubles
+            // every 2 faan (1.5x between), phase anchored at max(minFaan, 4).
+            const anchor = Math.max(minF, 4);
             const raw = [];
             for (let off = 0; minF + off <= maxF; off++) {
+                const f = minF + off;
                 let p;
                 if (off === 0) p = minPts;
-                else if (scaling === 'full') p = raw[off - 1] * 2;
-                else p = (off % 2 === 0) ? raw[off - 2] * 2 : raw[off - 1] * 1.5;
+                else if (scaling === 'full' || f <= 4) p = raw[off - 1] * 2;
+                else p = ((f - anchor) % 2 === 0) ? raw[off - 2] * 2 : raw[off - 1] * 1.5;
                 raw.push(p);
-                rows.push({ faan: minF + off, points: Math.round(p), selfPick: Math.round(p * spMult) });
+                rows.push({ faan: f, points: Math.round(p), selfPick: Math.round(p * spMult) });
             }
         }
 

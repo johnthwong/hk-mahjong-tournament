@@ -429,9 +429,10 @@ function getFullSettings() {
 // Build the faan -> points table. Points are anchored at the MINIMUM faan
 // (worth the configured min-points) and grow from there:
 //   full-spicy: every faan doubles.
-//   half-spicy: every 2 faan doubles; the in-between faan is 1.5x the previous
-//     (so if the min faan is odd, even faan are 1.5x the previous odd faan, and
-//      vice versa — the doubling phase always starts at the min faan).
+//   half-spicy: faan <= 4 still doubles every faan (the canonical low region
+//     1,2,4,8,16); from faan 5 up it doubles every 2 faan with the in-between
+//     faan = 1.5x the previous. The doubling phase anchors at max(minFaan, 4), so
+//     if the base lands on an odd faan its even neighbours are 1.5x, and vice versa.
 // Self-pick points = points x self-pick multiplier (winner's total on a self-draw).
 function computeFaanTable(s) {
   const minF = parseInt(s.faanMin);
@@ -450,14 +451,16 @@ function computeFaanTable(s) {
     return rows;
   }
 
+  const anchor = Math.max(minF, 4);
   const raw = []; // unrounded values so doubling compounds exactly
   for (let off = 0; minF + off <= maxF; off++) {
+    const f = minF + off;
     let p;
     if (off === 0) p = minPts;
-    else if (scaling === 'full') p = raw[off - 1] * 2;
-    else p = (off % 2 === 0) ? raw[off - 2] * 2 : raw[off - 1] * 1.5;
+    else if (scaling === 'full' || f <= 4) p = raw[off - 1] * 2;           // pure doubling
+    else p = ((f - anchor) % 2 === 0) ? raw[off - 2] * 2 : raw[off - 1] * 1.5;
     raw.push(p);
-    rows.push({ faan: minF + off, points: Math.round(p), selfPick: Math.round(p * spMult) });
+    rows.push({ faan: f, points: Math.round(p), selfPick: Math.round(p * spMult) });
   }
   return rows;
 }
