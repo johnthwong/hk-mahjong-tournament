@@ -1263,49 +1263,95 @@ function getHistoryMatrix(excludeRound) {
   return historyMap;
 }
 
-function swapPairings(round, t1Id, p1Id, t2Id, p2Id, force) {
+// Swap or substitute players in a round's pairings.
+//   - Both selected players seated  -> SWAP (exchange their two seats).
+//   - One seated + one benched       -> REPLACE (benched player takes the seat,
+//                                        the seated player is benched).
+// Tables are derived from the pairings, so callers pass only player IDs. Conflicts
+// (repeat opponents) and already-scored tables raise a warning that the caller can
+// confirm past with force=true.
+function swapPairings(round, p1Id, p2Id, force) {
   const ss = getDataSS();
   const sheet = ss.getSheetByName("Pairings");
   const data = sheet.getDataRange().getValues();
   const pMap = getPlayerMap();
-  let rIdx1 = -1, rIdx2 = -1; let row1, row2;
-  let inRound = false;
+  const nameOf = (id) => pMap[id] || id;
 
-  for (let i = 0; i < data.length; i++) {
-    if(!data[i][0]) continue;
-    let cell = data[i][0].toString().toUpperCase();
-    if (cell.includes("ROUND")) {
-      let match = cell.match(/\d+/);
-      inRound = (match && parseInt(match[0]) == round);
-      continue;
+  if (!p1Id || !p2Id) return { success: false, message: "Select two players." };
+  if (p1Id === p2Id) return { success: false, message: "Pick two different players." };
+
+  // Find a player's seat within the round: {rowIdx (0-based), col (1-4), tableId}.
+  const locate = (pid) => {
+    let inRound = false;
+    for (let i = 0; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      let cell = data[i][0].toString().toUpperCase();
+      if (cell.includes("ROUND")) {
+        let m = cell.match(/\d+/);
+        inRound = (m && parseInt(m[0]) == round);
+        continue;
+      }
+      if (inRound) {
+        for (let c = 1; c <= 4; c++) {
+          if (data[i][c] == pid) return { rowIdx: i, col: c, tableId: data[i][0] };
+        }
+      }
     }
-    if (inRound) {
-      if (data[i][0] == t1Id) { rIdx1 = i; row1 = data[i]; }
-      if (data[i][0] == t2Id) { rIdx2 = i; row2 = data[i]; }
-    }
+    return null;
+  };
+
+  const loc1 = locate(p1Id);
+  const loc2 = locate(p2Id);
+  if (!loc1 && !loc2) {
+    return { success: false, message: `Neither player is seated in Round ${round}; nothing to do.` };
   }
 
-  if (rIdx1 === -1 || rIdx2 === -1) return { success: false, message: "Tables not found." };
-  let cIdx1 = row1.indexOf(p1Id); let cIdx2 = row2.indexOf(p2Id);
-  if (cIdx1 < 1 || cIdx2 < 1) return { success: false, message: "Player positions changed. Refresh and try again." };
+  const games = getAllGamesData()[round] || [];
+  const isScored = (tid) => { let g = games.find(x => String(x.id) === String(tid)); return !!(g && g.isScored); };
+  const histMap = getHistoryMatrix(round);
+  // Repeat-opponent conflicts for `inId` joining the table at `loc`, ignoring `outId`.
+  const repeatConflicts = (inId, loc, outId) => {
+    let out = [];
+    let row = data[loc.rowIdx];
+    for (let k = 1; k <= 4; k++) {
+      if (k === loc.col) continue;
+      let opp = row[k];
+      if (opp !== "" && opp !== outId && histMap.has(inId) && histMap.get(inId).has(opp)) {
+        out.push(`${nameOf(inId)} played ${nameOf(opp)}`);
+      }
+    }
+    return out;
+  };
 
-  if (!force) {
-    const histMap = getHistoryMatrix(round);
-    let conflicts = [];
-    for (let k = 1; k <= 4; k++) {
-      let opp = row2[k];
-      if (opp !== p2Id && opp !== "" && histMap.has(p1Id) && histMap.get(p1Id).has(opp)) conflicts.push(`${pMap[p1Id] || p1Id} played ${pMap[opp] || opp}`);
+  // --- Both seated: SWAP ---
+  if (loc1 && loc2) {
+    let warnings = repeatConflicts(p1Id, loc2, p2Id).concat(repeatConflicts(p2Id, loc1, p1Id));
+    if (isScored(loc1.tableId) || isScored(loc2.tableId)) {
+      warnings.push("A table is already scored — existing scores stay with their original seats; re-enter if needed.");
     }
-    for (let k = 1; k <= 4; k++) {
-      let opp = row1[k];
-      if (opp !== p1Id && opp !== "" && histMap.has(p2Id) && histMap.get(p2Id).has(opp)) conflicts.push(`${pMap[p2Id] || p2Id} played ${pMap[opp] || opp}`);
+    if (warnings.length && !force) {
+      return { success: false, warning: true, message: "⚠️ " + warnings.join("\n") + "\n\nProceed anyway?" };
     }
-    if (conflicts.length > 0) return { success: false, warning: true, message: "⚠️ Conflict Warning:\n" + conflicts.join("\n") + "\n\nSwap anyway?" };
+    sheet.getRange(loc1.rowIdx + 1, loc1.col + 1).setValue(p2Id);
+    sheet.getRange(loc2.rowIdx + 1, loc2.col + 1).setValue(p1Id);
+    clearCache();
+    return { success: true, message: `✅ Swapped ${nameOf(p1Id)} (Table ${loc1.tableId}) with ${nameOf(p2Id)} (Table ${loc2.tableId}).` };
   }
 
-  sheet.getRange(rIdx1 + 1, cIdx1 + 1).setValue(p2Id);
-  sheet.getRange(rIdx2 + 1, cIdx2 + 1).setValue(p1Id);
-  return { success: true, message: "✅ Players swapped successfully." };
+  // --- One seated: REPLACE (bench the seated player, seat the benched one) ---
+  let seat = loc1 || loc2;
+  let outId = loc1 ? p1Id : p2Id; // currently seated -> benched
+  let inId = loc1 ? p2Id : p1Id;  // currently benched -> takes the seat
+  let warnings = repeatConflicts(inId, seat, outId);
+  if (isScored(seat.tableId)) {
+    warnings.push(`Table ${seat.tableId} is already scored — the existing score stays attributed to ${nameOf(outId)}. Re-enter the score for ${nameOf(inId)} if needed.`);
+  }
+  if (warnings.length && !force) {
+    return { success: false, warning: true, message: "⚠️ " + warnings.join("\n") + "\n\nProceed anyway?" };
+  }
+  sheet.getRange(seat.rowIdx + 1, seat.col + 1).setValue(inId);
+  clearCache();
+  return { success: true, message: `✅ ${nameOf(inId)} now seated at Table ${seat.tableId} (replacing ${nameOf(outId)}, now benched).\n\nMark ${nameOf(outId)} as DNF if they have withdrawn.` };
 }
 
 function getPlayerScheduleMatrix() {

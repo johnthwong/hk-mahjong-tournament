@@ -196,25 +196,24 @@
     </div>
 
     <div class="card" style="border-left: 5px solid #f1c40f;">
-      <h2>Swap Players</h2>
+      <h2>Swap / Substitute Players</h2>
       <div style="margin-bottom:10px;">
           <label>Round</label>
-          <select id="swapRound" onchange="renderSwapTables()"></select>
+          <select id="swapRound" onchange="renderSwapPlayerLists()"></select>
       </div>
       <div style="display:flex; gap:10px; margin-bottom:10px;">
          <div style="flex:1;">
-            <label>Table A</label>
-            <select id="swapTable1" onchange="renderSwapPlayers(1)"></select>
-            <select id="swapPlayer1" style="margin-top:5px; width:100%;"></select>
+            <label>Player A</label>
+            <select id="swapPlayer1" style="width:100%;"></select>
          </div>
          <div style="display:flex; align-items:center; font-size:1.5em; color:#95a5a6;">↔</div>
          <div style="flex:1;">
-            <label>Table B</label>
-            <select id="swapTable2" onchange="renderSwapPlayers(2)"></select>
-            <select id="swapPlayer2" style="margin-top:5px; width:100%;"></select>
+            <label>Player B</label>
+            <select id="swapPlayer2" style="width:100%;"></select>
          </div>
       </div>
-      <button class="btn btn-orange" onclick="actionSwap()">Swap Players</button>
+      <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 10px;">Both seated → swap their seats. One seated + one benched → the benched player takes the seat and the other is benched.</p>
+      <button class="btn btn-orange" onclick="actionSwap()">Swap / Substitute</button>
     </div>
 
     <div class="card">
@@ -365,7 +364,7 @@
         
         if(maxGeneratedRound >= 1) {
              renderGameSelect();
-             renderSwapTables();
+             renderSwapPlayerLists();
              renderPenaltyTables();
         }
     }
@@ -895,14 +894,12 @@ function actionSaveSettings() {
 
     function actionSwap(force) {
         const round = document.getElementById('swapRound').value;
-        const t1 = document.getElementById('swapTable1').value;
         const p1 = document.getElementById('swapPlayer1').value;
-        const t2 = document.getElementById('swapTable2').value;
         const p2 = document.getElementById('swapPlayer2').value;
-        if(!round || !t1 || !p1 || !t2 || !p2) return alert("Select all fields.");
-        if(t1 === t2) return alert("Tables must be different.");
+        if(!round || !p1 || !p2) return alert("Select a round and two players.");
+        if(p1 === p2) return alert("Pick two different players.");
 
-        showBusy("Swapping...");
+        showBusy("Updating...");
         google.script.run.withSuccessHandler(res => {
             if(!res.success && res.warning) {
                 hideBusy();
@@ -914,7 +911,7 @@ function actionSaveSettings() {
                 alert(res.message);
                 hideBusy();
             }
-        }).swapPairings(round, t1, p1, t2, p2, force === true);
+        }).swapPairings(round, p1, p2, force === true);
     }
 
     // --- PENALTY ACTIONS ---
@@ -1016,26 +1013,33 @@ function actionBulk() {
     }
 
     // --- RENDER HELPERS ---
-    function renderSwapTables() {
+    // One picker per side listing the whole roster, annotated with each player's
+    // seat for the selected round ("Table N") or "(bench)". The backend derives
+    // tables and decides swap vs. substitute from who is seated.
+    function renderSwapPlayerLists() {
         const r = document.getElementById('swapRound').value;
-        const s1 = document.getElementById('swapTable1');
-        const s2 = document.getElementById('swapTable2');
-        let games = DATA.allGames[r] || [];
-        let html = '<option value="" selected>-- Select --</option>';
-        html += games.map(g => `<option value="${g.id}">Table ${g.id}</option>`).join('');
-        s1.innerHTML = html; s1.disabled = false;
-        s2.innerHTML = html; s2.disabled = false;
-        document.getElementById('swapPlayer1').innerHTML = "";
-        document.getElementById('swapPlayer2').innerHTML = "";
-    }
-    
-    function renderSwapPlayers(n) {
-        const r = document.getElementById('swapRound').value;
-        const tId = document.getElementById(`swapTable${n}`).value;
-        const pSel = document.getElementById(`swapPlayer${n}`);
-        let game = (DATA.allGames[r] || []).find(g => String(g.id) === String(tId));
-        if(!game) { pSel.innerHTML = ""; return; }
-        pSel.innerHTML = ['p1','p2','p3','p4'].map(k => `<option value="${game[k].id}">${game[k].name}</option>`).join('');
+        const games = DATA.allGames[r] || [];
+        const seatOf = {};
+        games.forEach(g => ['p1','p2','p3','p4'].forEach(k => {
+            if (g[k] && g[k].id && g[k].id !== '?') seatOf[g[k].id] = g.id;
+        }));
+
+        const list = [...(DATA.players || [])].sort((a, b) => {
+            const sa = seatOf[a.id] ? 0 : 1, sb = seatOf[b.id] ? 0 : 1;
+            if (sa !== sb) return sa - sb;            // seated first, bench last
+            return String(a.name).localeCompare(String(b.name));
+        });
+
+        const opts = list.map(p => {
+            const isDnf = String(p.name).toUpperCase().startsWith('[DNF]');
+            const cleanName = p.name.replace(/^\[DNF\]\s*/i, '');
+            const where = seatOf[p.id] ? `Table ${seatOf[p.id]}` : 'bench';
+            return `<option value="${p.id}">${cleanName} — ${where}${isDnf ? ' • DNF' : ''}</option>`;
+        }).join('');
+
+        const blank = '<option value="" selected>-- Select --</option>';
+        document.getElementById('swapPlayer1').innerHTML = blank + opts;
+        document.getElementById('swapPlayer2').innerHTML = blank + opts;
     }
     
     function renderGameSelect() {
