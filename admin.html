@@ -739,21 +739,27 @@ function populateBucketDropdown() {
     // --- ACTIONS ---
     function refreshAndRender() {
         showBusy("Refreshing Data...");
-        google.script.run.withSuccessHandler(d => { DATA = d; renderAll(); hideBusy(); }).getInitialAdminData();
+        google.script.run
+            .withSuccessHandler(d => { DATA = d; renderAll(); hideBusy(); })
+            .withFailureHandler(e => { hideBusy(); alert("Refresh failed: " + (e && e.message ? e.message : e)); })
+            .getInitialAdminData();
     }
 
     // Fast, pairing-only refresh (skips the heavy Drive scan / score log / penalties).
     function refreshPairings() {
         showBusy("Refreshing...");
-        google.script.run.withSuccessHandler(d => {
-            DATA.settings = d.settings;
-            DATA.players = d.players;
-            DATA.schedule = d.schedule;
-            DATA.pairingState = d.pairingState;
-            DATA.allGames = d.allGames;
-            renderAll();
-            hideBusy();
-        }).getPairingData();
+        google.script.run
+            .withSuccessHandler(d => {
+                DATA.settings = d.settings;
+                DATA.players = d.players;
+                DATA.schedule = d.schedule;
+                DATA.pairingState = d.pairingState;
+                DATA.allGames = d.allGames;
+                renderAll();
+                hideBusy();
+            })
+            .withFailureHandler(e => { hideBusy(); alert("Refresh failed: " + (e && e.message ? e.message : e)); })
+            .getPairingData();
     }
     
     function refreshScoringOnly() {
@@ -905,16 +911,16 @@ function populateBucketDropdown() {
                 document.getElementById('conflictModal').style.display = 'block';
             } else {
                 alert(res.message);
-                refreshAndRender();
+                refreshPairings();
             }
-        }).generateNextRound(lastBucketConfig, lastSubsConfig);
+        }).withFailureHandler(e => { hideBusy(); alert("Generate failed: " + (e && e.message ? e.message : e)); }).generateNextRound(lastBucketConfig, lastSubsConfig);
     }
 
     function acceptConflicts() {
         document.getElementById('conflictOverlay').style.display = 'none';
         document.getElementById('conflictModal').style.display = 'none';
         alert("Pairings accepted with repeats.");
-        refreshAndRender();
+        refreshPairings();
     }
 
     function redoPairings() {
