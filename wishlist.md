@@ -95,3 +95,6 @@ Faan	Points	Formula
 {\displaystyle 2^{8}=256}
 13	384
 - no leftover field in the scoring UI.
+
+# security:
+- add a passcode gate to the admin portal (the /exec?portal=admin URL is otherwise usable by anyone with the link, since the web app runs as the owner with anonymous access).

@@ -287,7 +287,7 @@
 
         globalSchedule = sched;
         globalStandings = standings;
-        faanTable = faan || [];
+        faanTable = faan || { rows: [], falseWin: 0 };
 
         validatePlayerIds(globalStandings, (globalSchedule && globalSchedule.players) || []);
 
@@ -357,14 +357,22 @@
 
     function renderFaanTable() {
       const c = document.getElementById('faanContainer');
-      if (!faanTable || !faanTable.length) {
+      const data = faanTable || {};
+      const tableRows = data.rows || [];
+      if (!tableRows.length) {
         c.innerHTML = "<div class='card card-pad'>No faan table configured.</div>";
         return;
       }
-      const rows = faanTable.map(r =>
+      const rows = tableRows.map(r =>
         `<tr><td style="text-align:center;font-weight:bold;">${r.faan}</td><td style="text-align:center;">${r.points}</td><td style="text-align:center;">${r.selfPick}</td></tr>`
       ).join('');
-      c.innerHTML = `<div class="card"><div class="card-pad"><table style="width:100%;">
+      const fw = data.falseWin || 0;
+      const note = fw > 0
+        ? `<div style="font-size:0.85em; color:#c0392b; background:#fdecea; border:1px solid #f5c6c2; border-radius:8px; padding:10px; margin-bottom:12px;">
+             If a player declares a <b>false win</b>, they pay each other player <b>${fw}</b> points — losing <b>${fw * 3}</b> points total.
+           </div>`
+        : '';
+      c.innerHTML = `<div class="card"><div class="card-pad">${note}<table style="width:100%;">
           <thead><tr>
             <th style="text-align:center;">Faan</th>
             <th style="text-align:center;">Points</th>

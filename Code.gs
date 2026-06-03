@@ -396,9 +396,16 @@ function computeFaanTable(s) {
   return rows;
 }
 
-// Client-callable: the faan table for the active tournament.
+// Client-callable: the faan table for the active tournament, plus the False Win
+// value (per-opponent points; defaults to the max-faan points when unset).
 function getFaanTable() {
-  return computeFaanTable(getFullSettings());
+  const s = getFullSettings();
+  const rows = computeFaanTable(s);
+  let falseWin = Number(s.falseWinPoints);
+  if (!falseWin || isNaN(falseWin) || falseWin <= 0) {
+    falseWin = rows.length ? rows[rows.length - 1].points : 0;
+  }
+  return { rows: rows, falseWin: falseWin };
 }
 
 function saveTournamentSettings(form) {
