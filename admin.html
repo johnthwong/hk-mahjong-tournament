@@ -64,18 +64,28 @@
     <button class="nav-btn" data-tab="tab-penalties" style="color:#e74c3c;">Penalties</button>
   </div>
   
-  <div class="status-bar" id="activeTournamentLabel">Loading...</div>
-
   <div id="tab-setup" class="tab-view active">
     <div class="card">
-        <h2>Data Management</h2>
-        <a id="linkSheet" href="#" target="_blank" class="btn btn-blue" style="display:block; margin-bottom:15px;">Open Spreadsheet</a>
-        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <h2>Select Tournament File</h2>
+        <div style="font-size:0.85em; color:#7f8c8d; margin-bottom:12px;">
+            Each tournament is its own <b>file</b> — a database holding that tournament's rules, players, and points — saved in the host's Google Drive.
+            <b>Create New Tournament</b> starts a fresh one with default settings; <b>Load</b> switches to an existing file and pulls back its data.
+        </div>
+
+        <div style="background:#eef6ff; border:1px solid #cfe4ff; border-radius:8px; padding:12px; margin-bottom:15px;">
+            <div style="font-size:0.7em; text-transform:uppercase; letter-spacing:1px; color:#5a7fae; font-weight:700;">Currently Active</div>
+            <div id="activeTournamentLabel" style="font-size:1.2em; font-weight:800; color:#2c3e50;">Loading...</div>
+        </div>
+
+        <a id="linkSheet" href="#" target="_blank" class="btn btn-blue" style="display:block; margin-bottom:15px;">Open Google Sheets Database ↗</a>
+
         <label>Load Existing Tournament</label>
         <div style="display:flex; gap:10px;">
             <select id="selExisting" style="flex:2; margin-bottom:0;"></select>
             <button id="btnSwitch" class="btn btn-green" style="flex:1; margin-top:0;" onclick="actionSwitch()">Load</button>
         </div>
+
+        <button class="btn btn-red" id="btnCreate" style="margin-top:12px; width:100%;" onclick="actionCreate()">+ Create New Tournament</button>
     </div>
 
     <div class="card">
@@ -136,9 +146,8 @@
           <select id="newRuleset"></select>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
-          <button class="btn btn-blue" id="btnSaveSettings" style="margin:0;" onclick="actionSaveSettings()">Update Existing Tournament</button>
-          <button class="btn btn-red" id="btnCreate" style="margin:0;" onclick="actionCreate()">Create New Tournament</button>
+      <div style="margin-top:20px;">
+          <button class="btn btn-blue" id="btnSaveSettings" style="margin:0; width:100%;" onclick="actionSaveSettings()">Save</button>
       </div>
     </div>
   </div>
@@ -383,7 +392,7 @@
     // --- RENDERERS ---
 function renderSettings() {
         const s = DATA.settings;
-        document.getElementById('activeTournamentLabel').textContent = "Active: " + s.activeName;
+        document.getElementById('activeTournamentLabel').textContent = s.activeName;
         document.getElementById('setUma1').value = s.uma1;
         document.getElementById('setUma2').value = s.uma2;
         document.getElementById('setStart').value = s.startPoints;
@@ -406,6 +415,7 @@ function renderSettings() {
         const sel = document.getElementById('selExisting');
         sel.innerHTML = DATA.tournaments.length ? "" : "<option>No other files</option>";
         DATA.tournaments.forEach(t => sel.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+        if (s.activeId) sel.value = s.activeId;   // default to the file currently in use
     }
 
     function toggleSetTopCut() {
