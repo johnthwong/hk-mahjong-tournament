@@ -144,3 +144,33 @@ sheet / check-in order). Therefore:
   score *splitting*, not pairing order.)
 - Seating **within** a bucket is randomized (`.sort(() => Math.random() - 0.5)`),
   but that shuffle never moves a player across a bucket boundary.
+
+## Swap / substitute players (mid-round seat edits)
+
+`swapPairings(round, p1Id, p2Id, force)` (`Code.gs`) edits seats in an existing
+round's `Pairings` rows. The admin UI offers **one all-players picker per side**
+(`renderSwapPlayerLists` in `admin.html`); each option is annotated with the
+player's seat for that round (`Table N`) or `(bench)`. Tables are **derived** from
+the pairings, not chosen by the user.
+
+The backend decides the operation from who is seated:
+
+- **Both seated → swap** — exchange the two players' seats (the original behavior).
+- **One seated + one benched → replace** — write the benched player's ID into the
+  seated player's cell; the seated player is left unseated (benched). This is how you
+  bring an unseated substitute into a seat vacated mid-round. It does **not**
+  auto-DNF the outgoing player — the success message reminds you to mark them DNF if
+  they withdrew.
+- **Neither seated → error.**
+
+Guards (raise a warning the caller can confirm past with `force=true`):
+
+- **Repeat opponents** — if the incoming player has already faced anyone at the
+  target table (`getHistoryMatrix(round)`).
+- **Already-scored table** — scores live in the `Scores` sheet keyed to the seat's
+  player ID *at submission time*, so editing a seat after scoring does not move the
+  score. The warning tells you to re-enter the score for the incoming player.
+
+Note: substitutes added through the normal Add Player / Bulk Import UI get `P<n>`
+IDs (only the auto-add path uses `SUB<n>`), so a manually-added bench player swaps
+fine but isn't recognized by `SUB`-aware logic.
