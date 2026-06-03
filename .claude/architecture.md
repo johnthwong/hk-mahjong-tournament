@@ -88,14 +88,41 @@ updating **both** the sheet and every literal in the code (and any in
 
 Columns: `Player ID`, `Name`, `Checked In`, `ARA ID`.
 
-- **Player IDs must be text shaped like `P1`** (a `P` followed by digits). The UI
-  strips the prefix with `String(id).replace(/^P/i,'')` and compares IDs as
-  strings. Bulk import (`addPlayersBulk`) auto-generates correct `P`-prefixed IDs
-  (`"P" + nextNum`); the bad-data case is usually leftover numeric IDs read from the
-  master fallback. `index.html` validates ID format on load and throws a clear
-  message if they're not `P<number>`.
+- **Player IDs must be text shaped like `P1`** (a `P` followed by digits), or
+  `SUB1` for substitutes. The UI strips the prefix with
+  `String(id).replace(/^P/i,'')` and compares IDs as strings. Bulk import
+  (`addPlayersBulk`) auto-generates correct `P`-prefixed IDs (`"P" + nextNum`); the
+  bad-data case is usually leftover numeric IDs read from the master fallback.
+  `index.html` validates ID format on load (`/^(?:P|SUB)\d+$/i`) and throws a clear
+  message otherwise.
 - Bulk import format: one player per line, `Name - ARA ID` (ARA ID optional). The
   parser splits on `' - '`, so names must not contain ` - `.
+
+### Substitutes (SUB players)
+
+When the active player count isn't a multiple of 4, the app can auto-add filler
+players to complete the last table.
+
+- Auto-added subs get **ID `SUB<n>` and name `SUBSTITUTE <n>`** (e.g. `SUB1` /
+  `SUBSTITUTE 1`), created in both `generateNextRound` and the round-1 repair flow.
+  Numbering is taken from the max existing `SUB<n>` ID so removing a sub can't cause
+  an ID collision.
+- **SUB detection must use the ID prefix or the name prefix consistently.** Name
+  checks use `name.toUpperCase().startsWith("SUB")` (matches `SUBSTITUTE`); ID checks
+  use `id.startsWith("SUB")`. Earlier auto-subs were created with `P<n>` IDs and
+  `SUB <n>` names, so the ID-based skip in `countRepeats` (lines ~909/915) silently
+  never matched — fixed by giving subs `SUB<n>` IDs.
+- **The "add subs?" prompt fires on every round**, not just round 1
+  (`admin.html`): if the active (non-`[DNF]`) count isn't divisible by 4 it offers to
+  add the needed subs. The server (`generateNextRound`, `addSubs` arg) only pads when
+  the client passes `addSubs = true`.
+- **Known limitation (not yet changed): subs are still full participants in scoring,
+  standings, and Swiss seeding.** `getStandingsData` and the Swiss `ranked` sort
+  include every non-`[DNF]` player with no SUB check, so a sub accrues points, earns
+  a rank, and can be seeded into a top bucket — displacing a real contestant. Making
+  subs neutral fillers would require filtering them out of standings ranking and the
+  seeding sort. The `countRepeats` fix above only stops them being counted as repeat
+  opponents.
 
 ## Swiss pairing — how ties at a bracket boundary resolve
 
