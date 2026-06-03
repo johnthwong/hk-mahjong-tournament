@@ -1412,7 +1412,7 @@ function swapPairings(round, p1Id, p2Id, force) {
   }
   sheet.getRange(seat.rowIdx + 1, seat.col + 1).setValue(inId);
   clearCache();
-  return { success: true, message: `✅ ${nameOf(inId)} now seated at Table ${seat.tableId} (replacing ${nameOf(outId)}, now benched).\n\nMark ${nameOf(outId)} as DNF if they have withdrawn.` };
+  return { success: true, message: `✅ ${nameOf(inId)} now seated at Table ${seat.tableId} (replacing ${nameOf(outId)}, now benched).\n\nMark ${nameOf(outId)} as Did Not Finish if they have withdrawn.` };
 }
 
 function getPlayerScheduleMatrix() {

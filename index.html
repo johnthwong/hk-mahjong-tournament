@@ -359,7 +359,7 @@ const buildRow = (p, isTopTable) => {
           let penDisplay = penVal > 0 ? `<span class="neg">-${penVal}</span>` : '<span style="color:#eee">-</span>';
 
           let rowClass = "searchable-row";
-          if (p.isDNF) { rowClass += " row-dnf"; scoreDisplay = "<span class='dnf-text'>DNF</span>"; }
+          if (p.isDNF) { rowClass += " row-dnf"; scoreDisplay = "<span class='dnf-text'>Did Not Finish</span>"; }
 
           let tr = `<tr class="${rowClass}">
                     <td class="sticky-col col-rank">${p.rank}</td>
@@ -387,8 +387,8 @@ const buildRow = (p, isTopTable) => {
             <th class="sticky-col col-id">ID</th>
             <th class="sticky-col col-name">Name</th>
             <th style="min-width:70px;">Total</th>`;
-          for(let i=maxR; i>=1; i--) h += `<th>R${i}</th>`;
-          h += `<th style="min-width:40px;">Pen</th>`;
+          for(let i=maxR; i>=1; i--) h += `<th style="white-space:nowrap;">Round ${i}</th>`;
+          h += `<th style="min-width:40px;">Penalties</th>`;
           h += `</tr></thead>`;
           return h;
       };
@@ -415,7 +415,7 @@ function renderSchedulePlayerView() {
       if(!globalSchedule.players || !globalSchedule.players.length) { container.innerHTML = "<div class='card-pad'>No pairings.</div>"; return; }
       
       let html = "<table><thead><tr><th class='sticky-col sch-id'>ID</th><th class='sticky-col sch-name'>Name</th>";
-      for(let i=globalSchedule.maxRound; i>=1; i--) html += `<th>R${i}</th>`;
+      for(let i=globalSchedule.maxRound; i>=1; i--) html += `<th style="white-space:nowrap;">Round ${i}</th>`;
       html += "</tr></thead><tbody>";
       
       globalSchedule.players.forEach(p => {

@@ -117,7 +117,7 @@
               <input type="number" id="setTopCutSize" placeholder="e.g. 4" inputmode="numeric" style="margin-bottom:10px;">
               
               <label style="font-size:0.9em;">Cut After Round</label>
-              <input type="number" id="setTopCutRound" placeholder="e.g. 4 (Cut happens before R5)" inputmode="numeric">
+              <input type="number" id="setTopCutRound" placeholder="e.g. 4 (Cut happens before Round 5)" inputmode="numeric">
               <div style="font-size:0.8em; color:#7f8c8d; margin-top:5px;">If set to 0, cut triggers manually or immediately.</div>
           </div>
       </div>
@@ -221,7 +221,7 @@
 
     <div class="card" style="border-left: 5px solid #e74c3c;">
       <h2>Regenerate Latest Round</h2>
-      <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 10px;">Deletes the latest round's pairings and any scores entered for it, then re-pairs the current active players. Use this after DNFs change who should be seated (e.g. to drop substitutes that are no longer needed).</p>
+      <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 10px;">Deletes the latest round's pairings and any scores entered for it, then re-pairs the current active players. Use this after withdrawals change who should be seated (e.g. to drop substitutes that are no longer needed).</p>
       <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 10px;"><strong>Uses the bucket selection in the Generate Round section above</strong> — set it there before regenerating.</p>
       <button class="btn btn-orange" onclick="actionRegenerateLatest()">Regenerate Latest Round</button>
     </div>
@@ -262,7 +262,7 @@
         <h2 style="margin-bottom:5px;">Score Log</h2>
         <div id="scoreLogContainer" style="margin-top:15px; overflow-x:auto;">
             <table class="data-table">
-                <thead><tr><th style="white-space:nowrap;">Time</th><th>R-G</th><th style="min-width:120px;">Scores (Raw)</th></tr></thead>
+                <thead><tr><th style="white-space:nowrap;">Time</th><th style="white-space:nowrap;">Round-Table</th><th style="min-width:120px;">Scores (Raw)</th></tr></thead>
                 <tbody id="scoreLogBody"></tbody>
             </table>
         </div>
@@ -305,7 +305,7 @@
         <h2>History</h2>
         <div style="overflow-x:auto;">
             <table class="data-table">
-                <thead><tr><th style="width:70px;">Time</th><th style="width:30px;">Rd</th><th style="width:30px;">Tbl</th><th>Player</th><th>Pts</th><th>Reason</th><th>Notes</th><th style="text-align:right;">Actions</th></tr></thead>
+                <thead><tr><th style="width:70px;">Time</th><th>Round</th><th>Table</th><th>Player</th><th>Points</th><th>Reason</th><th>Notes</th><th style="text-align:right;">Actions</th></tr></thead>
                 <tbody id="penHistory"></tbody>
             </table>
         </div>
@@ -453,8 +453,8 @@ function renderRoster() {
                     <div id="actions-menu-${p.id}" style="display:none; justify-content: flex-end; gap: 5px;">
                         <button style="background: #f3e5f5; color: #8e24aa; border: 1px solid #e1bee7; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.9em; transition: 0.2s; margin:0;" onclick="actionEditAraId('${p.id}', '${p.araId || ''}')">ARA</button>
                         <button style="background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.9em; transition: 0.2s; margin:0;" onclick="actionRenamePlayer('${p.id}', '${cleanName}')">Rename</button>
-                        <button class="btn-icon-orange" style="margin:0;" onclick="actionToggleDNF('${p.id}')">DNF</button>
-                        <button class="btn-icon-red" style="margin:0;" onclick="actionDeletePlayer('${p.id}', '${safe}')">Del</button>
+                        <button class="btn-icon-orange" style="margin:0;" onclick="actionToggleDNF('${p.id}')">Did Not Finish</button>
+                        <button class="btn-icon-red" style="margin:0;" onclick="actionDeletePlayer('${p.id}', '${safe}')">Delete</button>
                         <button style="background: #eee; color: #555; border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 0.9em; margin:0;" onclick="togglePlayerActions('${p.id}')">✕</button>
                     </div>
                 </td>
@@ -1085,7 +1085,7 @@ function actionBulk() {
             const isDnf = String(p.name).toUpperCase().startsWith('[DNF]');
             const cleanName = p.name.replace(/^\[DNF\]\s*/i, '');
             const where = seatOf[p.id] ? `Table ${seatOf[p.id]}` : 'bench';
-            return `<option value="${p.id}">${cleanName} — ${where}${isDnf ? ' • DNF' : ''}</option>`;
+            return `<option value="${p.id}">${cleanName} — ${where}${isDnf ? ' • Did Not Finish' : ''}</option>`;
         }).join('');
 
         const blank = '<option value="" selected>-- Select --</option>';
@@ -1129,7 +1129,7 @@ function actionBulk() {
             let html = ['p1','p2','p3','p4'].map(k => {
                let p = game[k];
                let val = isScored ? scores[k] : "";
-               return `<div class="score-row"><span class="player-label">${p.name} <span class="id-tag">(${p.id})</span></span><input type="hidden" id="pid_${k}" value="${p.id}"><input type="number" id="val_${k}" class="score-val" value="${val}" placeholder="Pts" oninput="checkSum()"><button type="button" class="btn-icon-orange" onclick="toggleMinus('val_${k}')" style="margin-left: 5px; padding: 10px;">[+/-]</button></div>`;
+               return `<div class="score-row"><span class="player-label">${p.name} <span class="id-tag">(${p.id})</span></span><input type="hidden" id="pid_${k}" value="${p.id}"><input type="number" id="val_${k}" class="score-val" value="${val}" placeholder="Points" oninput="checkSum()"><button type="button" class="btn-icon-orange" onclick="toggleMinus('val_${k}')" style="margin-left: 5px; padding: 10px;">[+/-]</button></div>`;
             }).join('');
             
             document.getElementById('scoreRows').innerHTML = html;
@@ -1190,7 +1190,7 @@ function renderPenalties() {
                 <td style="color:#555; font-size:0.9em;">${p.reason}</td>
                 <td style="color:#555; font-size:0.9em;">${p.notes}</td>
                 <td style="text-align:right;">
-                    <button class="btn-icon-red" onclick="actionDeletePenalty(${p.rawDate}, '${p.playerId}')">Del</button>
+                    <button class="btn-icon-red" onclick="actionDeletePenalty(${p.rawDate}, '${p.playerId}')">Delete</button>
                 </td>
             </tr>`;
         });
