@@ -1,0 +1,1 @@
+- bulk check in button for all players
