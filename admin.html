@@ -216,6 +216,12 @@
       <button class="btn btn-orange" onclick="actionSwap()">Swap / Substitute</button>
     </div>
 
+    <div class="card" style="border-left: 5px solid #e74c3c;">
+      <h2>Regenerate Latest Round</h2>
+      <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 10px;">Deletes the latest round's pairings and any scores entered for it, then re-pairs the current active players. Use this after DNFs change who should be seated (e.g. to drop substitutes that are no longer needed).</p>
+      <button class="btn btn-orange" onclick="actionRegenerateLatest()">Regenerate Latest Round</button>
+    </div>
+
     <div class="card">
       <h2>Pairings</h2>
       <div id="pairingsDisplay"></div>
@@ -757,12 +763,17 @@ function populateBucketDropdown() {
         let addSubs = false;
         
         if (!isRedoAction) {
-            // Active players = everyone not marked [DNF]. Offer to auto-add subs
-            // whenever this isn't a multiple of 4 — on any round, not just round 1.
-            const activeCount = DATA.players.filter(p => !String(p.name).toUpperCase().startsWith("[DNF]")).length;
-            if (activeCount % 4 !== 0) {
-                const subsNeeded = 4 - (activeCount % 4);
-                if (confirm(`Active player count (${activeCount}) is not divisible by 4.\n\nWould you like to auto-add ${subsNeeded} SUBSTITUTE player(s) to fill the seats?`)) {
+            // Subs are filler: we only need enough to round REAL (non-sub) active
+            // players up to a multiple of 4. Prompt to add subs only when short;
+            // excess subs are auto-benched by the server.
+            const active = DATA.players.filter(p => !String(p.name).toUpperCase().startsWith("[DNF]"));
+            const isSub = (p) => /^SUB/i.test(String(p.id)) || /^SUB/i.test(String(p.name));
+            const realCount = active.filter(p => !isSub(p)).length;
+            const haveSubs = active.filter(isSub).length;
+            const subsNeeded = (4 - (realCount % 4)) % 4;
+            const toAdd = subsNeeded - haveSubs;
+            if (toAdd > 0) {
+                if (confirm(`${realCount} active player(s) need ${subsNeeded} substitute(s) to fill the last table, but only ${haveSubs} exist.\n\nAuto-add ${toAdd} more SUBSTITUTE player(s)?`)) {
                     addSubs = true;
                 } else {
                     return;
@@ -807,6 +818,36 @@ function populateBucketDropdown() {
         google.script.run.withSuccessHandler(() => {
             actionGenerateRound(true);
         }).deleteLastRound(DATA.pairingState.nextRound);
+    }
+
+    // Delete the latest generated round (pairings + its scores) and re-pair the
+    // current active players. The roster is unchanged by deletion, so we compute
+    // the sub decision from current DATA.players, then reuse the redo path.
+    function actionRegenerateLatest() {
+        const latest = (DATA.pairingState.nextRound || 1) - 1;
+        if (latest < 1) return alert("No round has been generated yet.");
+
+        if (!confirm(`Regenerate Round ${latest}?\n\nThis deletes Round ${latest}'s pairings AND any scores entered for it, then re-pairs the current active players.`)) return;
+
+        // Same sub logic as actionGenerateRound: add subs only if short.
+        const active = DATA.players.filter(p => !String(p.name).toUpperCase().startsWith("[DNF]"));
+        const isSub = (p) => /^SUB/i.test(String(p.id)) || /^SUB/i.test(String(p.name));
+        const realCount = active.filter(p => !isSub(p)).length;
+        const haveSubs = active.filter(isSub).length;
+        const subsNeeded = (4 - (realCount % 4)) % 4;
+        const toAdd = subsNeeded - haveSubs;
+        let addSubs = false;
+        if (toAdd > 0) {
+            if (!confirm(`${realCount} active player(s) need ${subsNeeded} substitute(s) to fill the last table, but only ${haveSubs} exist.\n\nAuto-add ${toAdd} more SUBSTITUTE player(s)?`)) return;
+            addSubs = true;
+        }
+
+        lastBucketConfig = document.getElementById('bucketSelect') ? document.getElementById('bucketSelect').value : 1;
+        lastSubsConfig = addSubs;
+        showBusy("Regenerating...");
+        google.script.run.withSuccessHandler(() => {
+            actionGenerateRound(true);
+        }).deleteRoundAndScores(latest);
     }
 function updateDistributionDisplay() {
         const s = DATA.settings;

@@ -570,6 +570,13 @@ function renamePlayer(playerId, newName) {
    5. PAIRING LOGIC
    ================================================== */
 
+// A substitute is any player whose ID or name starts with "SUB" (auto-added subs
+// use "SUB<n>" IDs / "SUBSTITUTE <n>" names). Subs are filler that only fill out
+// the last table — they are not permanent participants.
+function isSubPlayer(p) {
+  return /^SUB/i.test(String(p.id)) || /^SUB/i.test(String(p.name));
+}
+
 function getPairingState() {
   const data = getCachedSheetData("Pairings");
   const sett = getFullSettings();
@@ -601,9 +608,11 @@ function getPairingState() {
   let shouldTrigger = (cutEnabled && cutSize > 0 && !isCutActive && cutRound > 0 && (maxRound + 1) > cutRound);
 
   let validOptions = [];
-  let pCount = activePlayers.length;
-  // Pad total to be divisible by 4 (to account for potential SUBs)
-  if (pCount % 4 !== 0) pCount += (4 - (pCount % 4));
+  // Subs only fill out the last table, so the effective pool is the REAL (non-sub)
+  // active players rounded up to a multiple of 4. Excess subs are benched at
+  // generation, so they must not inflate the bucket count.
+  let realActiveCount = activePlayers.filter(p => !isSubPlayer(p)).length;
+  let pCount = Math.ceil(realActiveCount / 4) * 4;
 
   // Remove the Top Cut size from the bucket math if it is active/triggering
   let poolSize = (isCutActive || shouldTrigger) ? pCount - cutSize : pCount;
@@ -666,21 +675,31 @@ function generateNextRound(bucketCount, addSubs) {
     }
 
     let allPlayers = getPlayers();
-    let players = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
-    if (addSubs && players.length % 4 !== 0) {
-      const subsNeeded = 4 - (players.length % 4);
-      // Substitutes get IDs like "SUB1" (so SUB-aware logic can spot them by ID)
-      // and display names like "SUBSTITUTE 1". Number off existing SUB IDs so we
-      // never collide if an earlier sub was removed.
+    let active = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
+    let reals = active.filter(p => !isSubPlayer(p));
+    let subs = active.filter(p => isSubPlayer(p));
+    // Subs are a filler pool: only enough to round real players up to a multiple
+    // of 4. Excess subs are benched (not matched); add new ones only if we're
+    // short and the caller opted in.
+    let subsNeeded = (4 - (reals.length % 4)) % 4;
+
+    if (addSubs && subs.length < subsNeeded) {
+      // Substitutes get "SUB<n>" IDs (so SUB-aware logic can spot them by ID) and
+      // "SUBSTITUTE <n>" names. Number off existing SUB IDs to avoid collisions.
       let subNums = allPlayers.map(p => /^SUB(\d+)$/i.exec(p.id)).filter(Boolean).map(m => parseInt(m[1], 10));
       let nextSub = subNums.length ? Math.max(...subNums) + 1 : 1;
-      for (let i = 0; i < subsNeeded; i++) {
+      for (let i = subs.length; i < subsNeeded; i++) {
         addPlayer(`SUBSTITUTE ${nextSub}`, `SUB${nextSub}`);
         nextSub++;
       }
       allPlayers = getPlayers();
-      players = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
+      active = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
+      reals = active.filter(p => !isSubPlayer(p));
+      subs = active.filter(p => isSubPlayer(p));
     }
+
+    // Match all real players plus only the subs needed; bench any extras.
+    let players = reals.concat(subs.slice(0, subsNeeded));
 
     if (players.length % 4 !== 0) {
       return { success: false, message: "Cannot generate round. The number of active players must be a multiple of 4." };
@@ -902,6 +921,45 @@ function deleteLastRound(roundNum) {
     if (startRow !== -1) {
       sheet.getRange(startRow + 1, 1, sheet.getLastRow() - startRow, 6).clearContent();
     }
+    clearCache();
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Delete a round's pairings AND its score rows. Used to regenerate the latest
+// round from scratch (e.g. to drop subs that are no longer needed after DNFs).
+function deleteRoundAndScores(roundNum) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return false; }
+  try {
+    const ss = getDataSS();
+
+    const pSheet = ss.getSheetByName("Pairings");
+    if (pSheet) {
+      const data = pSheet.getDataRange().getValues();
+      let startRow = -1;
+      for (let i = data.length - 1; i >= 0; i--) {
+        if (data[i][0] && data[i][0].toString().toUpperCase().includes(`--- ROUND ${roundNum} (`)) {
+          startRow = i;
+          break;
+        }
+      }
+      if (startRow !== -1) {
+        pSheet.getRange(startRow + 1, 1, pSheet.getLastRow() - startRow, 6).clearContent();
+      }
+    }
+
+    // Remove score rows whose Round column (col 2) matches.
+    const sSheet = ss.getSheetByName("Scores");
+    if (sSheet && sSheet.getLastRow() > 1) {
+      const sData = sSheet.getDataRange().getValues();
+      for (let i = sData.length - 1; i >= 1; i--) {
+        if (String(sData[i][1]) === String(roundNum)) sSheet.deleteRow(i + 1);
+      }
+    }
+
     clearCache();
     return true;
   } finally {
