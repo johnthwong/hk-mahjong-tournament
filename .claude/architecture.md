@@ -234,13 +234,16 @@ Per-tournament settings (`getFullSettings` / `saveTournamentSettings`):
 `Faan_Scaling` (`half` | `full` | `custom`), `Self_Pick_Multiplier` (default 1.5),
 `False_Win_Points`.
 
-`faanBase(f, scaling)` + `computeFaanTable(s)` build rows `{faan, points, selfPick}`:
-- **half-spicy** (default): `2^f` up to 4 faan, then doubles every 2 faan with odd
-  faan = 1.5x the previous even faan — the standard HK faan-to-score table.
-- **full-spicy**: pure `2^f`.
+`computeFaanTable(s)` builds rows `{faan, points, selfPick}`. **The progression is
+anchored at the minimum faan** (worth `Faan_Min_Points`) and grows from there:
+- **half-spicy** (default): every 2 faan doubles; the in-between faan is 1.5x the
+  previous. Because it's anchored at the min, if the min faan is odd then even faan
+  are 1.5x the previous odd faan, and vice versa — the doubling phase always starts
+  at the min faan (so any base yields clean integers).
+- **full-spicy**: every faan doubles (`minPts * 2^offset`).
 - **custom**: literal points list (comma/space separated, Min→Max).
-- Points are scaled so the min faan equals `Faan_Min_Points`. `selfPick` =
-  `points x Self_Pick_Multiplier` (winner's total on a self-draw, split 3 ways).
+- `selfPick` = `points x Self_Pick_Multiplier` (winner's total on a self-draw,
+  split 3 ways).
 
 `getFaanTable()` exposes it. The **player portal** has a third view (Standings →
 Pairings → Faan Table) showing Faan/Points/Self-pick. The **admin settings** screen

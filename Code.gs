@@ -426,20 +426,13 @@ function getFullSettings() {
   return _cachedSettings;
 }
 
-// Base (unscaled) points for a faan count.
-//   full-spicy: pure doubling, 2^faan.
-//   half-spicy: same as full up to 4 faan, then doubles every 2 faan, with odd
-//   faan = 1.5x the previous even faan (matches the standard HK faan-to-score table).
-function faanBase(f, scaling) {
-  if (scaling === 'full') return Math.pow(2, f);
-  if (f <= 4) return Math.pow(2, f);
-  if (f % 2 === 0) return Math.pow(2, f / 2 + 2);
-  return 1.5 * Math.pow(2, (f - 1) / 2 + 2);
-}
-
-// Build the faan -> points table, scaled so the minimum faan is worth the
-// configured point value. Self-pick points = points x self-pick multiplier
-// (the winner's total on a self-draw, split among the three opponents).
+// Build the faan -> points table. Points are anchored at the MINIMUM faan
+// (worth the configured min-points) and grow from there:
+//   full-spicy: every faan doubles.
+//   half-spicy: every 2 faan doubles; the in-between faan is 1.5x the previous
+//     (so if the min faan is odd, even faan are 1.5x the previous odd faan, and
+//      vice versa — the doubling phase always starts at the min faan).
+// Self-pick points = points x self-pick multiplier (winner's total on a self-draw).
 function computeFaanTable(s) {
   const minF = parseInt(s.faanMin);
   const maxF = parseInt(s.faanMax);
@@ -457,10 +450,14 @@ function computeFaanTable(s) {
     return rows;
   }
 
-  const baseMin = faanBase(minF, scaling) || 1;
-  for (let f = minF; f <= maxF; f++) {
-    const pts = Math.round(minPts * faanBase(f, scaling) / baseMin);
-    rows.push({ faan: f, points: pts, selfPick: Math.round(pts * spMult) });
+  const raw = []; // unrounded values so doubling compounds exactly
+  for (let off = 0; minF + off <= maxF; off++) {
+    let p;
+    if (off === 0) p = minPts;
+    else if (scaling === 'full') p = raw[off - 1] * 2;
+    else p = (off % 2 === 0) ? raw[off - 2] * 2 : raw[off - 1] * 1.5;
+    raw.push(p);
+    rows.push({ faan: minF + off, points: Math.round(p), selfPick: Math.round(p * spMult) });
   }
   return rows;
 }
