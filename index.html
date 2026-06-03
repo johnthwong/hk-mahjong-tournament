@@ -164,6 +164,14 @@
     .tp-id { color: #999; font-size: 0.85em; font-family: monospace; margin-right: 5px; font-weight:bold; }
 
     .hidden { display: none; }
+
+    /* View switcher menu (mobile-friendly dropdown) */
+    .view-menu { display: none; position: absolute; top: 56px; left: 15px; background: #fff; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); overflow: hidden; z-index: 200; min-width: 180px; }
+    .view-menu.open { display: block; }
+    .view-menu-item { display: block; width: 100%; text-align: left; background: none; border: none; padding: 15px 18px; font-size: 1em; color: #2c3e50; cursor: pointer; }
+    .view-menu-item:not(:last-child) { border-bottom: 1px solid #eee; }
+    .view-menu-item:active { background: #f0f2f5; }
+    .view-menu-item.active { background: #eef6ff; font-weight: 700; color: #3498db; }
     
     #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -179,7 +187,12 @@
   </div>
 
 <div class="nav">
-    <button class="btn" onclick="toggleView()" id="btnToggle" style="position: absolute; top: 15px; left: 15px; margin: 0; padding: 8px 12px; font-size: 0.85em; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">View Pairings</button>
+    <button class="btn" onclick="toggleMenu(event)" id="btnMenu" aria-label="Menu" style="position: absolute; top: 15px; left: 15px; margin: 0; padding: 8px 14px; font-size: 1.2em; line-height: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">☰</button>
+    <div id="viewMenu" class="view-menu">
+        <button class="view-menu-item" onclick="setView('standings')">Standings</button>
+        <button class="view-menu-item" onclick="setView('schedule')">Pairings</button>
+        <button class="view-menu-item" onclick="setView('faan')">Faan Table</button>
+    </div>
     <button class="btn refresh-btn" onclick="actionRefresh()" style="position: absolute; top: 15px; right: 15px; margin: 0; padding: 0; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2em; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Refresh Data">↻</button>
     
     <div id="tourneyLabel" class="tourney-label">Loading...</div>
@@ -287,6 +300,7 @@
         renderSchedulePlayerView();
         renderScheduleTableView();
         renderFaanTable();
+        applyView();
         filter();
         
         loader.style.display = 'none';
@@ -303,27 +317,43 @@
         loadData(true);
     }
 
-    function toggleView() {
-      if (mode === 'standings') mode = 'schedule';
-      else if (mode === 'schedule') mode = 'faan';
-      else mode = 'standings';
+    function toggleMenu(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('viewMenu').classList.toggle('open');
+    }
+
+    function setView(m) {
+      mode = m;
+      document.getElementById('viewMenu').classList.remove('open');
       applyView();
       filter();
     }
+
+    const VIEW_ORDER = ['standings', 'schedule', 'faan'];
+    const VIEW_TITLES = { standings: 'Standings', schedule: 'Pairings', faan: 'Faan Table' };
 
     function applyView() {
       document.getElementById('viewStandings').classList.toggle('hidden', mode !== 'standings');
       document.getElementById('viewSchedule').classList.toggle('hidden', mode !== 'schedule');
       document.getElementById('viewFaan').classList.toggle('hidden', mode !== 'faan');
-      const title = document.getElementById('pageTitle');
-      const btn = document.getElementById('btnToggle');
-      const search = document.getElementById('search');
-      if (mode === 'standings') { title.innerText = "Standings"; btn.innerText = "View Pairings"; }
-      else if (mode === 'schedule') { title.innerText = "Pairings"; btn.innerText = "View Faan Table"; }
-      else { title.innerText = "Faan Table"; btn.innerText = "View Standings"; }
+      document.getElementById('pageTitle').innerText = VIEW_TITLES[mode] || 'Standings';
+      // Highlight the active item in the menu.
+      document.querySelectorAll('#viewMenu .view-menu-item').forEach((b, i) => {
+        b.classList.toggle('active', VIEW_ORDER[i] === mode);
+      });
       // The faan table isn't searchable, so hide the search box on that view.
+      const search = document.getElementById('search');
       if (search) search.style.visibility = (mode === 'faan') ? 'hidden' : 'visible';
     }
+
+    // Close the menu when tapping outside it.
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('viewMenu');
+      const btn = document.getElementById('btnMenu');
+      if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
+        menu.classList.remove('open');
+      }
+    });
 
     function renderFaanTable() {
       const c = document.getElementById('faanContainer');
