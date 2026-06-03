@@ -425,17 +425,17 @@ const buildRow = (p, isTopTable) => {
           const scoreClass = scoreVal >= 0 ? 'pos' : 'neg';
           const scoreSign = scoreVal > 0 ? '+' : '';
           
-          let scoreDisplay = `<span class="${scoreClass} cut-score">${scoreSign}${scoreVal.toFixed(1)}</span>`;
+          let scoreDisplay = `<span class="${scoreClass} cut-score">${scoreSign}${Math.round(scoreVal)}</span>`;
           
           if(isTopTable) {
              let fVal = p.auxScore || 0;
              let fClass = fVal >= 0 ? 'pos' : 'neg';
              let fSign = fVal > 0 ? '+' : '';
-             scoreDisplay += `<div style="font-size:0.75em;color:#95a5a6;margin-top:2px;">Finals: <span class="${fClass}">${fSign}${fVal.toFixed(1)}</span></div>`;
+             scoreDisplay += `<div style="font-size:0.75em;color:#95a5a6;margin-top:2px;">Finals: <span class="${fClass}">${fSign}${Math.round(fVal)}</span></div>`;
           }
 
           let penVal = p.penalties || 0;
-          let penDisplay = penVal > 0 ? `<span class="neg">-${penVal}</span>` : '<span style="color:#eee">-</span>';
+          let penDisplay = penVal > 0 ? `<span class="neg">-${Math.round(penVal)}</span>` : '<span style="color:#eee">-</span>';
 
           let rowClass = "searchable-row";
           if (p.isDNF) { rowClass += " row-dnf"; scoreDisplay = "<span class='dnf-text'>Did Not Finish</span>"; }
@@ -451,7 +451,7 @@ const buildRow = (p, isTopTable) => {
               let cell = '<span style="color:#eee">-</span>';
               if(schedP && schedP.scores && schedP.scores[r] !== undefined && schedP.scores[r] !== "") {
                   const v = parseFloat(schedP.scores[r]);
-                  cell = `<span class="${v>=0?'pos':'neg'}">${v>0?'+':''}${v.toFixed(1)}</span>`;
+                  cell = `<span class="${v>=0?'pos':'neg'}">${v>0?'+':''}${Math.round(v)}</span>`;
               }
               tr += `<td>${cell}</td>`;
           }
@@ -538,7 +538,7 @@ function renderSchedulePlayerView() {
                    let scoreClass = v >= 0 ? 'pos' : 'neg';
                    let sign = v > 0 ? '+' : '';
                    // margin-left: auto pushes the score to the far right of the grid cell
-                   scoreDisplay = `<span class="${scoreClass}" style="margin-left:auto;">${sign}${v.toFixed(1)}</span>`;
+                   scoreDisplay = `<span class="${scoreClass}" style="margin-left:auto;">${sign}${Math.round(v)}</span>`;
                }
                
                // Added width:100% so the flexbox pushes the score perfectly to the edge
