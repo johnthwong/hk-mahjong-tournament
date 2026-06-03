@@ -194,3 +194,54 @@ Guards (raise a warning the caller can confirm past with `force=true`):
 Note: substitutes added through the normal Add Player / Bulk Import UI get `P<n>`
 IDs (only the auto-add path uses `SUB<n>`), so a manually-added bench player swaps
 fine but isn't recognized by `SUB`-aware logic.
+
+## HK mahjong scoring model
+
+The scorer was converted from Riichi to **Hong Kong** rules (branch
+`hk-mahjong-scoring`). Key differences from the original engine:
+
+- **Net-points, zero-sum entry.** Each player's entered score IS their net result
+  for the game; the four scores must sum to 0 (`actionSubmitScore` / `checkSum`).
+  `saveScore` stores the value as-is — no Uma bonus, no starting stack, no
+  `x1000`/`÷1000` scaling. The legacy `Scores` "Leftover" column is kept for shape
+  and written as `0`. Penalty points are likewise stored/read literally (the old
+  thousand-scaling was removed from `addPenalty` and `getStandingsData`).
+- **No Uma / no Riichi sticks.** Those settings, inputs, and the placement-bonus
+  logic are gone. The tiebreaker setting was reworded (it no longer affects points
+  with Uma removed — it only records rank order).
+
+### Faan table
+
+Per-tournament settings (`getFullSettings` / `saveTournamentSettings`):
+`Faan_Min` (default 3), `Faan_Max` (default 13, **capped at 13**, and min must be
+`< max` — enforced client- and server-side), `Faan_Min_Points` (default 8),
+`Faan_Scaling` (`half` | `full` | `custom`), `Self_Pick_Multiplier` (default 1.5),
+`False_Win_Points`.
+
+`faanBase(f, scaling)` + `computeFaanTable(s)` build rows `{faan, points, selfPick}`:
+- **half-spicy** (default): `2^f` up to 4 faan, then doubles every 2 faan with odd
+  faan = 1.5x the previous even faan — the standard HK faan-to-score table.
+- **full-spicy**: pure `2^f`.
+- **custom**: literal points list (comma/space separated, Min→Max).
+- Points are scaled so the min faan equals `Faan_Min_Points`. `selfPick` =
+  `points x Self_Pick_Multiplier` (winner's total on a self-draw, split 3 ways).
+
+`getFaanTable()` exposes it. The **player portal** has a third view (Standings →
+Pairings → Faan Table) showing Faan/Points/Self-pick. The **admin settings** screen
+shows a **live preview** (`renderFaanPreview` mirrors the server computation) that
+updates as parameters change.
+
+### False Win
+
+`applyFalseWin(round, table, offenderId)` is a table-wide penalty: the offender is
+deducted `3*V` and each of the other three players is credited `+V` (zero-sum),
+where `V` = `False_Win_Points` or, if blank, the points at the maximum faan. Written
+as `Penalties` rows (positive "Points Deducted" reduces score, negative credits it).
+Admin uses the **Apply False Win** button in the Penalties tab (reuses the
+round/table/player selectors).
+
+### Theme
+
+`jade` is a player-portal theme (CSS class in `index.html`, option in admin
+settings) using base `#1ccc81` with `#cc1c68`/`#1c68cc` accents — joining the
+existing `default` and `cherry-blossom` themes.
