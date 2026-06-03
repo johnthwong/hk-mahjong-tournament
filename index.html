@@ -202,16 +202,22 @@
     </div>
   </div>
 
+  <div id="viewFaan" class="hidden">
+    <div id="faanContainer" style="margin-top:10px;"></div>
+  </div>
+
   <script>
     let mode = 'standings';
     let scheduleMode = 'player'; 
     let selectedRound = 1; 
     let globalStandings = [];
     let globalSchedule = { maxRound: 0, players: [] };
+    let faanTable = [];
 
     function getSettingsP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getFullSettings()); }
     function getSchedP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getPlayerScheduleMatrix()); }
     function getStandingsP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getStandingsData()); }
+    function getFaanTableP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getFaanTable()); }
 
   // Player IDs must be text shaped like "P1" (a "P" followed by digits), or
   // "SUB1" for auto-added substitutes. If the Players sheet stores them as plain
@@ -243,7 +249,7 @@
       loader.style.display = 'flex';
 
       try {
-        const [settings, sched, standings] = await Promise.all([ getSettingsP(), getSchedP(), getStandingsP() ]);
+        const [settings, sched, standings, faan] = await Promise.all([ getSettingsP(), getSchedP(), getStandingsP(), getFaanTableP() ]);
 
         if(settings) {
             if(settings.activeName) {
@@ -259,6 +265,7 @@
 
         globalSchedule = sched;
         globalStandings = standings;
+        faanTable = faan || [];
 
         validatePlayerIds(globalStandings, (globalSchedule && globalSchedule.players) || []);
 
@@ -270,7 +277,8 @@
         renderStandings();
         renderSchedulePlayerView();
         renderScheduleTableView();
-        filter(); 
+        renderFaanTable();
+        filter();
         
         loader.style.display = 'none';
 
@@ -287,20 +295,44 @@
     }
 
     function toggleView() {
-      if(mode === 'standings') {
-        mode = 'schedule';
-        document.getElementById('viewStandings').classList.add('hidden');
-        document.getElementById('viewSchedule').classList.remove('hidden');
-        document.getElementById('pageTitle').innerText = "Pairings";
-        document.getElementById('btnToggle').innerText = "View Standings";
-      } else {
-        mode = 'standings';
-        document.getElementById('viewSchedule').classList.add('hidden');
-        document.getElementById('viewStandings').classList.remove('hidden');
-        document.getElementById('pageTitle').innerText = "Standings";
-        document.getElementById('btnToggle').innerText = "View Pairings";
-      }
+      if (mode === 'standings') mode = 'schedule';
+      else if (mode === 'schedule') mode = 'faan';
+      else mode = 'standings';
+      applyView();
       filter();
+    }
+
+    function applyView() {
+      document.getElementById('viewStandings').classList.toggle('hidden', mode !== 'standings');
+      document.getElementById('viewSchedule').classList.toggle('hidden', mode !== 'schedule');
+      document.getElementById('viewFaan').classList.toggle('hidden', mode !== 'faan');
+      const title = document.getElementById('pageTitle');
+      const btn = document.getElementById('btnToggle');
+      const search = document.getElementById('search');
+      if (mode === 'standings') { title.innerText = "Standings"; btn.innerText = "View Pairings"; }
+      else if (mode === 'schedule') { title.innerText = "Pairings"; btn.innerText = "View Faan Table"; }
+      else { title.innerText = "Faan Table"; btn.innerText = "View Standings"; }
+      // The faan table isn't searchable, so hide the search box on that view.
+      if (search) search.style.visibility = (mode === 'faan') ? 'hidden' : 'visible';
+    }
+
+    function renderFaanTable() {
+      const c = document.getElementById('faanContainer');
+      if (!faanTable || !faanTable.length) {
+        c.innerHTML = "<div class='card card-pad'>No faan table configured.</div>";
+        return;
+      }
+      const rows = faanTable.map(r =>
+        `<tr><td style="text-align:center;font-weight:bold;">${r.faan}</td><td style="text-align:center;">${r.points}</td><td style="text-align:center;">${r.selfPick}</td></tr>`
+      ).join('');
+      c.innerHTML = `<div class="card"><div class="card-pad"><table style="width:100%;">
+          <thead><tr>
+            <th style="text-align:center;">Faan</th>
+            <th style="text-align:center;">Points</th>
+            <th style="text-align:center;">Self-pick Points</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div></div>`;
     }
 
     function setScheduleMode(newMode) {
