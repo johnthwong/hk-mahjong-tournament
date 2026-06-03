@@ -195,6 +195,22 @@ Note: substitutes added through the normal Add Player / Bulk Import UI get `P<n>
 IDs (only the auto-add path uses `SUB<n>`), so a manually-added bench player swaps
 fine but isn't recognized by `SUB`-aware logic.
 
+## Hidden admin UI (penalties) + PIN gate
+
+- **Penalties are hidden, not removed.** The **Penalties nav tab** and the
+  **Penalty Configuration** block on the Settings tab are both set to
+  `display:none` in `admin.html` (no HK-specific penalties for now). All the
+  penalty code (`addPenalty`, `deletePenalty`, the penalty form, `newRuleset`,
+  standings deductions) is intact — un-hide the two elements to restore it.
+- **Admin PIN gate (UI-level deterrent).** A PIN stored in Script Properties
+  (`ADMIN_PIN`, signed with `ADMIN_TOKEN_SECRET`) gates the admin *screen*: on load
+  `getAdminGate(token)` decides whether to show the UI or a PIN overlay;
+  `verifyAdminPin` returns a 30-day signed token kept in `localStorage` so a known
+  browser isn't re-prompted. Set/clear the PIN from the Settings tab (`setAdminPin`);
+  if no PIN is set the gate is open. **This only hides the UI — individual server
+  functions are not token-checked**, so it's bypassable via DevTools. The
+  server-side enforcement ("solid") is on the wishlist.
+
 ## HK mahjong scoring model
 
 The scorer was converted from Riichi to **Hong Kong** rules (branch

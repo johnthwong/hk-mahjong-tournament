@@ -51,6 +51,16 @@
 </head>
 <body>
 
+  <div id="pinGate" style="display:none; position:fixed; inset:0; background:#2c3e50; z-index:99999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:340px; width:100%; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+      <h2 style="margin:0 0 6px; color:#2c3e50;">Admin Access</h2>
+      <p style="font-size:0.85em; color:#7f8c8d; margin:0 0 16px;">Enter the admin PIN to continue.</p>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="PIN" style="width:100%; padding:12px; font-size:1.2em; text-align:center; border:2px solid #eee; border-radius:8px; margin-bottom:10px;" onkeydown="if(event.key==='Enter')submitPin()">
+      <div id="pinError" style="color:#e74c3c; font-size:0.85em; min-height:18px; margin-bottom:8px;"></div>
+      <button class="btn btn-blue" style="width:100%; margin:0;" onclick="submitPin()">Unlock</button>
+    </div>
+  </div>
+
   <div id="loader">
     <div class="spinner"></div>
     <div class="loader-text" id="loaderText">Loading Application...</div>
@@ -159,9 +169,19 @@
               <option value="jade">Jade (Green/Magenta)</option>
           </select>
       </div>
-<div style="margin-top:15px; background:#ffebee; padding:10px; border-radius:8px; border:1px solid #ffcdd2;">
+
+      <div style="margin-top:15px; background:#fff8e1; padding:10px; border-radius:8px; border:1px solid #ffe082;">
+          <label style="font-weight:600;">Admin PIN</label>
+          <div style="font-size:0.8em; color:#7f8c8d; margin-bottom:6px;">Gates the admin screen (remembered per browser for 30 days). Leave blank and press Set to remove the gate. Deterrent only — it hides the UI but isn't yet enforced server-side.</div>
+          <div style="display:flex; gap:10px;">
+              <input type="text" id="setAdminPin" placeholder="New PIN (blank = none)" style="flex:2; margin-bottom:0;">
+              <button class="btn btn-blue" style="flex:1; margin-top:0;" onclick="actionSetPin()">Set PIN</button>
+          </div>
+      </div>
+
+      <div style="display:none; margin-top:15px; background:#ffebee; padding:10px; border-radius:8px; border:1px solid #ffcdd2;">
           <h3 style="margin:0 0 10px 0; color:#c62828; font-size:1em;">Penalty Configuration</h3>
-          
+
           <label>Penalty Ruleset</label>
           <select id="newRuleset"></select>
       </div>
@@ -344,13 +364,52 @@
     // --- INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', () => {
       initTabs();
+      const token = localStorage.getItem('adminToken') || '';
+      google.script.run
+        .withSuccessHandler(g => { if (g && g.open) { bootAdmin(); } else { document.getElementById('pinGate').style.display = 'flex'; setTimeout(() => document.getElementById('pinInput').focus(), 50); } })
+        .withFailureHandler(() => { bootAdmin(); })   // gate-check error: don't lock the owner out (deterrent only)
+        .getAdminGate(token);
+    });
+
+    function bootAdmin() {
       showBusy("Loading All Data...");
       google.script.run.withSuccessHandler(d => {
           DATA = d;
           renderAll();
           hideBusy();
       }).withFailureHandler(e => { alert(e); hideBusy(); }).getInitialAdminData();
-    });
+    }
+
+    function submitPin() {
+      const pin = document.getElementById('pinInput').value;
+      const err = document.getElementById('pinError');
+      err.textContent = '';
+      google.script.run.withSuccessHandler(res => {
+        if (res && res.ok) {
+          localStorage.setItem('adminToken', res.token);
+          document.getElementById('pinGate').style.display = 'none';
+          bootAdmin();
+        } else {
+          err.textContent = 'Incorrect PIN.';
+        }
+      }).withFailureHandler(e => { err.textContent = String(e); }).verifyAdminPin(pin);
+    }
+
+    function actionSetPin() {
+      const pin = document.getElementById('setAdminPin').value;
+      const token = localStorage.getItem('adminToken') || '';
+      showBusy("Updating PIN...");
+      google.script.run.withSuccessHandler(res => {
+        hideBusy();
+        if (res && res.ok) {
+          if (res.token) localStorage.setItem('adminToken', res.token);
+          document.getElementById('setAdminPin').value = '';
+          alert(res.cleared ? "Admin PIN removed — the gate is now off." : "Admin PIN set. This browser stays unlocked.");
+        } else {
+          alert((res && res.message) || "Could not update PIN.");
+        }
+      }).withFailureHandler(e => { hideBusy(); alert(e); }).setAdminPin(token, pin);
+    }
 
     function initTabs() {
       const btns = document.querySelectorAll('.nav-btn');

@@ -23,6 +23,62 @@ function doGet(e) {
 function getScriptUrl() { return ScriptApp.getService().getUrl(); }
 
 /* ==================================================
+   ADMIN PIN GATE (UI-level deterrent)
+   The PIN gates the admin SCREEN only; individual server functions are not
+   yet token-checked (see wishlist for the "solid" server-side enforcement).
+   PIN + signing secret live in Script Properties (owner-only). A correct PIN
+   returns a 30-day signed token the browser stores in localStorage, so a known
+   browser isn't re-prompted on every refresh. If no PIN is set, the gate is open.
+   ================================================== */
+function adminPinIsSet_() {
+  const p = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+  return !!(p && String(p).length);
+}
+function adminTokenSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let s = props.getProperty('ADMIN_TOKEN_SECRET');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); props.setProperty('ADMIN_TOKEN_SECRET', s); }
+  return s;
+}
+function adminSign_(msg) {
+  return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(String(msg), adminTokenSecret_()));
+}
+function makeAdminToken_() {
+  const exp = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+  return exp + '.' + adminSign_(exp);
+}
+function checkAdminToken(token) {
+  if (!adminPinIsSet_()) return true;                 // no PIN configured => open
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const exp = Number(parts[0]);
+  if (!exp || Date.now() > exp) return false;
+  return adminSign_(exp) === parts[1];
+}
+
+// Client-callable: should the admin UI be shown without prompting?
+function getAdminGate(token) {
+  return { pinSet: adminPinIsSet_(), open: checkAdminToken(token) };
+}
+// Client-callable: verify a PIN; on success return a session token.
+function verifyAdminPin(pin) {
+  if (!adminPinIsSet_()) return { ok: true, token: makeAdminToken_(), pinSet: false };
+  const stored = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+  if (String(pin) === String(stored)) return { ok: true, token: makeAdminToken_(), pinSet: true };
+  return { ok: false };
+}
+// Client-callable: set or clear the PIN. Requires being unlocked (or first-run open).
+function setAdminPin(token, newPin) {
+  if (!checkAdminToken(token)) return { ok: false, message: "Not authorized." };
+  const props = PropertiesService.getScriptProperties();
+  newPin = (newPin == null) ? "" : String(newPin).trim();
+  if (newPin === "") { props.deleteProperty('ADMIN_PIN'); return { ok: true, cleared: true }; }
+  props.setProperty('ADMIN_PIN', newPin);
+  return { ok: true, token: makeAdminToken_() };
+}
+
+/* ==================================================
    2. DATA AGGREGATION & CACHING
    ================================================== */
 

@@ -98,3 +98,4 @@ Faan	Points	Formula
 
 # security:
 - add a passcode gate to the admin portal (the /exec?portal=admin URL is otherwise usable by anyone with the link, since the web app runs as the owner with anonymous access).
+- upgrade the admin PIN to server-side enforcement ("solid"): require a valid session token argument on every admin data-load and mutating function (getInitialAdminData, getPairingData, saveScores, generateNextRound, startNewTournament, switchTournament, saveTournamentSettings, player mutations, swap/delete/regenerate, etc.) so the PIN can't be bypassed via DevTools. The current gate is UI-only (deterrent).
