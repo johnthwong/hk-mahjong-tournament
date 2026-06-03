@@ -176,10 +176,6 @@
   </div>
 
 <div id="tab-players" class="tab-view">
-    
-    <div class="card" style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; margin-bottom: 20px;">
-        <a href="<?= ScriptApp.getService().getUrl() ?>" target="_top" class="btn btn-blue" style="margin: 0; text-decoration: none; display: block; text-align: center;">Go to Player Portal</a>
-    </div>
 
     <div class="card">
       <h2>Add Player</h2>
@@ -214,6 +210,8 @@
       </div>
       <button class="btn btn-red" id="btnClearRoster" style="margin-top:15px; opacity:0.7;" onclick="actionClearRoster()">Clear All Players</button>
     </div>
+
+    <a href="<?= ScriptApp.getService().getUrl() ?>" target="_top" style="display:block; text-align:center; margin:10px 0; color:#7f8c8d; text-decoration:none; font-size:0.9em; font-weight:600;">Go to Player Portal ↗</a>
   </div>
 
   <div id="tab-pairings" class="tab-view">
@@ -298,7 +296,7 @@
 
   <div id="tab-penalties" class="tab-view">
     <div class="card" style="border-top: 5px solid #c0392b;">
-        <h2>Chombo / Penalty</h2>
+        <h2>Penalty</h2>
         <div style="display:flex; gap:10px;">
             <div style="flex:1;">
                 <label>Round</label>
@@ -327,8 +325,6 @@
         <input type="hidden" id="penCalculatedPoints" value="0">
 
         <button class="btn btn-red" id="btnSubmitPenalty" onclick="actionSubmitPenalty()">Apply Deduction</button>
-        <button class="btn btn-orange" id="btnFalseWin" onclick="actionFalseWin()" style="margin-top:8px;">Apply False Win (table-wide)</button>
-        <div style="font-size:0.8em; color:#7f8c8d; margin-top:6px;">False Win uses the selected Round, Table and Player: that player loses 3× the False Win value and each of the other three players gains it.</div>
     </div>
 <div class="card">
         <h2>History</h2>
@@ -1064,20 +1060,6 @@ function actionSaveSettings() {
     }
 
     // --- PENALTY ACTIONS ---
-    function actionFalseWin() {
-        const round = document.getElementById('penRound').value;
-        const table = document.getElementById('penTable').value;
-        const pid = document.getElementById('penPlayer').value;
-        if (!round || !table || table === '-' || !pid) return alert("Select Round, Table, and the offending Player first.");
-        if (!confirm("Apply a False Win to this player?\n\nThey lose 3× the False Win value; the other three players each gain it.")) return;
-        showBusy("Applying False Win...");
-        google.script.run.withSuccessHandler(res => {
-            hideBusy();
-            alert(res.message);
-            if (res.success) refreshAndRender();
-        }).applyFalseWin(round, table, pid);
-    }
-
     function actionSubmitPenalty() {
         const round = document.getElementById('penRound').value;
         const table = document.getElementById('penTable').value;
