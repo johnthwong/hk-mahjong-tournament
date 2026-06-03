@@ -213,14 +213,15 @@
     function getSchedP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getPlayerScheduleMatrix()); }
     function getStandingsP() { return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).getStandingsData()); }
 
-  // Player IDs must be text shaped like "P1" (a "P" followed by digits).
-  // If the Players sheet stores them as plain numbers, fail with a clear,
-  // actionable message instead of a cryptic ".replace is not a function".
+  // Player IDs must be text shaped like "P1" (a "P" followed by digits), or
+  // "SUB1" for auto-added substitutes. If the Players sheet stores them as plain
+  // numbers, fail with a clear, actionable message instead of a cryptic
+  // ".replace is not a function".
   function validatePlayerIds(...playerLists) {
       const bad = [];
       playerLists.forEach(list => {
           (list || []).forEach(p => {
-              if (!p || typeof p.id !== 'string' || !/^P\d+$/i.test(p.id)) {
+              if (!p || typeof p.id !== 'string' || !/^(?:P|SUB)\d+$/i.test(p.id)) {
                   bad.push(p ? JSON.stringify(p.id) : '(missing)');
               }
           });
@@ -229,8 +230,8 @@
           const sample = bad.slice(0, 5).join(', ') + (bad.length > 5 ? ', …' : '');
           throw new Error(
               `Invalid player ID(s): ${sample}. Player IDs must be text like "P1" ` +
-              `(a "P" followed by a number). Check the ID column on the Players sheet — ` +
-              `they may have been stored as plain numbers.`
+              `(a "P" followed by a number) or "SUB1" for substitutes. Check the ID ` +
+              `column on the Players sheet — they may have been stored as plain numbers.`
           );
       }
   }

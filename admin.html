@@ -758,12 +758,15 @@ function populateBucketDropdown() {
         let addSubs = false;
         
         if (!isRedoAction) {
-            if (DATA.pairingState.nextRound === 1 && DATA.players.length % 4 !== 0) {
-                const subsNeeded = 4 - (DATA.players.length % 4);
-                if (confirm(`Player count (${DATA.players.length}) is not divisible by 4.\n\nWould you like to auto-add ${subsNeeded} SUB player(s) to fill the seats?`)) {
+            // Active players = everyone not marked [DNF]. Offer to auto-add subs
+            // whenever this isn't a multiple of 4 — on any round, not just round 1.
+            const activeCount = DATA.players.filter(p => !String(p.name).toUpperCase().startsWith("[DNF]")).length;
+            if (activeCount % 4 !== 0) {
+                const subsNeeded = 4 - (activeCount % 4);
+                if (confirm(`Active player count (${activeCount}) is not divisible by 4.\n\nWould you like to auto-add ${subsNeeded} SUBSTITUTE player(s) to fill the seats?`)) {
                     addSubs = true;
                 } else {
-                    return; 
+                    return;
                 }
             } else {
                 if(!confirm(`Generate Round ${DATA.pairingState.nextRound}?`)) return;

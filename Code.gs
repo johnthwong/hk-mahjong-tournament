@@ -666,10 +666,14 @@ function generateNextRound(bucketCount, addSubs) {
     let players = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
     if (addSubs && players.length % 4 !== 0) {
       const subsNeeded = 4 - (players.length % 4);
-      let subCount = allPlayers.filter(p => p.name.toUpperCase().startsWith("SUB")).length;
+      // Substitutes get IDs like "SUB1" (so SUB-aware logic can spot them by ID)
+      // and display names like "SUBSTITUTE 1". Number off existing SUB IDs so we
+      // never collide if an earlier sub was removed.
+      let subNums = allPlayers.map(p => /^SUB(\d+)$/i.exec(p.id)).filter(Boolean).map(m => parseInt(m[1], 10));
+      let nextSub = subNums.length ? Math.max(...subNums) + 1 : 1;
       for (let i = 0; i < subsNeeded; i++) {
-        subCount++;
-        addPlayer(`SUB ${subCount}`);
+        addPlayer(`SUBSTITUTE ${nextSub}`, `SUB${nextSub}`);
+        nextSub++;
       }
       allPlayers = getPlayers();
       players = allPlayers.filter(p => !p.name.toUpperCase().startsWith("[DNF]"));
@@ -1480,16 +1484,19 @@ function beginTournamentRepair() {
       tables = tables.filter(t => t.seats.some(seat => seat !== null));
       if (tables.length > 0) {
           let lastTable = tables[tables.length - 1];
-          let currentSubs = players.filter(p => p.name.toUpperCase().startsWith("SUB")).length;
-          
+          // Number substitutes off existing SUB IDs (collision-safe) and give them
+          // "SUB<n>" IDs / "SUBSTITUTE <n>" names, matching generateNextRound.
+          let subNums = players.map(p => /^SUB(\d+)$/i.exec(p.id)).filter(Boolean).map(m => parseInt(m[1], 10));
+          let nextSub = subNums.length ? Math.max(...subNums) + 1 : 1;
+
           let needsSub = lastTable.seats.some(seat => seat === null);
           if (needsSub) {
               for (let j = 0; j < 4; j++) {
                   if (lastTable.seats[j] === null) {
-                      currentSubs++;
-                      let subId = "P" + getNextSafeId(playersSheet);
-                      let subName = "SUB " + currentSubs;
-                      playersSheet.appendRow([subId, subName, true]); 
+                      let subId = "SUB" + nextSub;
+                      let subName = "SUBSTITUTE " + nextSub;
+                      nextSub++;
+                      playersSheet.appendRow([subId, subName, true]);
                       lastTable.seats[j] = subId;
                       
                       // STORE AS OBJECT TO CAPTURE FINAL ID LATER
