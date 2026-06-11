@@ -25,6 +25,8 @@
     .btn-ghost { display: inline-block; width: auto; background: transparent; color: #7f8c8d; box-shadow: none; text-align: left; margin: 5px 0; padding-left: 0; }
     .btn-ghost:hover:not(:disabled) { box-shadow: none; transform: none; color: #5d6d6e; text-decoration: underline; }
     .btn-ghost:active:not(:disabled) { box-shadow: none; transform: none; }
+    .guide-chevron { display: inline-block; transition: transform 0.2s; margin-left: 4px; }
+    details[open] .guide-chevron { transform: rotate(180deg); }
     .btn-icon-red { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.9em; transition: 0.2s; }
     .btn-icon-orange { background: #fff3e0; color: #e67e22; border: 1px solid #ffe0b2; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.9em; transition: 0.2s; margin-right: 5px; }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
@@ -79,6 +81,59 @@
   </div>
   
   <div id="tab-setup" class="tab-view active">
+    <div class="card" style="background:#fbfdff;">
+      <details>
+        <summary style="cursor:pointer; font-weight:800; color:#2c3e50; font-size:1.05em; list-style:none;">📖 How to use this app (for admins) <span class="guide-chevron">▾</span></summary>
+        <div style="font-size:0.9em; color:#34495e; line-height:1.5; margin-top:12px;">
+
+          <div style="font-weight:700; color:#16a085; margin-bottom:4px;">The basic flow</div>
+          <ol style="margin:0 0 14px 18px; padding:0;">
+            <li><b>Set the rules</b> (this <b>Settings</b> tab): number of rounds, pairing mode
+              (<i>Scramble</i> = random each round, or <i>Swiss</i> = pair by standings), optional top cut,
+              tie-breaker, and the faan scoring table. Press <b>Save</b>.</li>
+            <li><b>Add players</b> (<b>Players</b> tab): <b>Add Single</b> one at a time, or <b>Import List</b>
+              to paste many names. Then <b>Check In</b> the players who are present — only checked-in
+              players who haven't been marked <b>Did Not Finish</b> get paired.</li>
+            <li><b>Pair a round</b> (<b>Pairings</b> tab): press <b>Generate Round</b>. Round 1 is random;
+              later rounds follow your pairing mode.</li>
+            <li><b>Enter scores</b> (<b>Scorekeeping</b> tab): pick the round and table, type each player's
+              net points (they must add up to <b>zero</b> per table), and <b>Submit</b>. To enter a whole
+              round at once, use <b>Bulk Score Import</b> — one row of 4 scores per table.</li>
+            <li><b>Pair the next round</b> → enter its scores → repeat. Standings update automatically.</li>
+          </ol>
+
+          <div style="font-weight:700; color:#16a085; margin-bottom:4px;">Substitutes</div>
+          <p style="margin:0 0 14px;">Substitutes are a <b>filler pool</b> used to round the real players up to a
+            multiple of 4. When you're short, the app offers to add subs (named <code>SUBSTITUTE n</code>);
+            extra subs are benched automatically. Note: a sub who actually plays a hand <b>does</b> count in
+            scores and standings.</p>
+
+          <div style="font-weight:700; color:#16a085; margin-bottom:4px;">Swapping &amp; substituting mid-round</div>
+          <p style="margin:0 0 6px;">On the <b>Pairings</b> tab, <b>Swap / Substitute</b> edits seats in an
+            already-generated round. Pick two players:</p>
+          <ul style="margin:0 0 8px 18px; padding:0;">
+            <li><b>Both seated</b> → their seats are exchanged.</li>
+            <li><b>One seated + one on the bench</b> → the bench player takes the seat; the other becomes benched.
+              This is how you bring a substitute in for someone who left.</li>
+          </ul>
+          <p style="margin:0 0 14px;">Swapping does <b>not</b> auto-mark the outgoing player — if they withdrew,
+            set them <b>Did Not Finish</b> on the Players tab so they're left out of future pairings.
+            If the table was <b>already scored</b>, the score stays with the original player ID — re-enter it
+            for the incoming player.</p>
+
+          <div style="font-weight:700; color:#16a085; margin-bottom:4px;">Fixing a round</div>
+          <p style="margin:0 0 14px;"><b>Regenerate Latest Round</b> (Pairings tab) deletes the latest round's
+            pairings <b>and its scores</b>, then re-pairs the current active players — useful after a player
+            is marked <b>Did Not Finish</b>, changing who should be playing.</p>
+
+          <div style="font-size:0.85em; color:#7f8c8d; border-top:1px solid #e6eef2; padding-top:8px;">
+            Colour guide for buttons: <b style="color:#27ae60;">green</b> = normal actions ·
+            <b style="color:#e67e22;">orange</b> = bigger actions (generate, regenerate, swap, bulk import,
+            new tournament) · <b style="color:#c0392b;">red</b> = destructive (clear / delete).
+          </div>
+        </div>
+      </details>
+    </div>
     <div class="card">
         <h2>Select Tournament File</h2>
         <div style="font-size:0.85em; color:#7f8c8d; margin-bottom:12px;">
