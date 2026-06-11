@@ -101,5 +101,6 @@ editor (Project Settings → Script Properties) if you ever lock yourself out.
 
 ## Everyday workflow
 - Edit code locally → `clasp push -f` → refresh the `@HEAD` web-app URL.
+- To open the deployed app in a browser: `clasp open-web-app`.
 - See `.claude/architecture.md` for how the data model, pairings, subs, faan
   scoring, and the PIN gate work.

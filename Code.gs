@@ -1236,6 +1236,44 @@ function saveScores(form) {
 }
 
 
+function saveScoresBulk(form) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (e) {
+    return { success: false, message: "Server busy: Another admin is currently saving. Please try again." };
+  }
+
+  try {
+    const ss = getDataSS();
+    let sheet = ss.getSheetByName("Scores");
+    if (!sheet) sheet = ss.insertSheet("Scores");
+
+    const games = form.games || [];
+    if (!games.length) return { success: false, message: "No rows to import." };
+
+    // Same HK net-points model as saveScores(): each entered score IS the net
+    // result (zero-sum across the table); raw === final, legacy "Leftover" = 0.
+    // Already-scored tables are overwritten in place; new ones are appended.
+    let added = 0, updated = 0;
+    games.forEach(g => {
+      const s1 = Number(g.p1Score), s2 = Number(g.p2Score), s3 = Number(g.p3Score), s4 = Number(g.p4Score);
+      const check = checkIfScored(form.round, g.gameId);
+      const rowData = [ new Date(), form.round, g.gameId, g.p1Id, s1, s1, g.p2Id, s2, s2, g.p3Id, s3, s3, g.p4Id, s4, s4, 0 ];
+      if (check.scored && check.rowIndex) { sheet.getRange(check.rowIndex, 1, 1, rowData.length).setValues([rowData]); updated++; }
+      else { sheet.appendRow(rowData); added++; }
+    });
+
+    clearCache();
+    updateLeaderboardSheet();
+    return { success: true, addedCount: added, updatedCount: updated, message: `Bulk import complete: ${added} new, ${updated} overwritten.` };
+  } catch (e) {
+    return { success: false, message: "Error during bulk import: " + e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function addPenalty(round, table, playerId, points, reason, notes) {
   const lock = LockService.getScriptLock();
   try { 
