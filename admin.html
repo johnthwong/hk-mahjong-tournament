@@ -291,9 +291,11 @@
   </div>
 
   <div id="tab-pairings" class="tab-view">
-    <button class="btn btn-ghost" id="btnRefreshPairings" style="margin:0 0 15px 0;" onclick="refreshPairings()">↻ Refresh (pull latest player changes)</button>
     <div class="card">
-      <h2>Generate Pairings</h2>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+        <h2 style="margin:0;">Generate Pairings</h2>
+        <button class="btn btn-ghost" id="btnRefreshPairings" style="margin:0;" onclick="refreshPairings()">↻ Refresh (pull latest player changes)</button>
+      </div>
       <div id="pairStatus" style="margin-bottom:15px; font-weight:normal; color:#555; line-height:1.5;">Checking status...</div>
       
 <div id="swissOptions" style="display:none; background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px;">
