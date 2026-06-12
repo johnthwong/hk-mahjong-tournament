@@ -81,6 +81,21 @@ clasp open-web-app          # pick the @N deployment to open it
 - Use the `@HEAD` deployment while developing (it always serves the latest
   `clasp push`); cut a new `@N` deployment for a stable shareable link.
 
+### Retiring old deployments
+There's no "disable" toggle — taking an old `@N` deployment offline means
+**deleting** it, which permanently kills its `/exec` URL (anyone still holding
+that link gets an error).
+```bash
+clasp list-deployments                 # find deployment IDs (@1, @2, …, @HEAD)
+clasp delete-deployment <deploymentId> # retire one old deployment
+clasp delete-deployment --all          # retire all of them
+```
+- Don't delete the deployment backing the link you've handed out, and keep
+  `@HEAD` (it serves the latest `clasp push`). Verify which is which with
+  `clasp open-web-app <deploymentId>`.
+- This only removes the public URL/snapshot — it never touches your code,
+  script versions, or any tournament data in Drive.
+
 ### 8. First run
 On a fresh master, the `Settings` tab's `Active_Tournament_ID` may be empty or
 stale. Either is fine — the app falls back to the master sheet. Open the admin
